@@ -1,0 +1,134 @@
+id: https://github.com/Simon-McIntosh/helix/schema/helix
+name: helix
+title: Helix Orchestration Schema
+description: >-
+  The durable record types for a Helix run. These define the plain-text state
+  the dumb outer loop reads and writes: sessions (self-contained, chained runs),
+  findings (age- and condition-stamped claims), oracle gates (tiered completion
+  criteria), and the plan state (the signed contract crossing plan->implement).
+  pydantic v2 models are generated from this schema with `gen-pydantic` (see
+  helix/models.py).
+license: CC BY-ND 4.0
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  helix: https://github.com/Simon-McIntosh/helix/schema/
+default_prefix: helix
+default_range: string
+
+imports:
+  - linkml:types
+
+enums:
+  Phase:
+    description: The three disciplined phases of the loop.
+    permissible_values:
+      plan:
+        description: Interactive, high-judgment. The human's seat.
+      implement:
+        description: Autonomous, low-judgment. A worker makes bounded progress.
+      judge:
+        description: Independent verdict. A separate invocation from the worker.
+
+  GateTier:
+    description: How a completion gate is checked.
+    permissible_values:
+      surrogate:
+        description: Fast, cheap check run every iteration as backpressure.
+      blocking:
+        description: >-
+          Slow or physical-experiment check. The loop blocks and waits for
+          human-supplied ground truth rather than guessing.
+
+  Verdict:
+    description: The judge's decision for a session.
+    permissible_values:
+      pass:
+        description: Every gate's criterion is satisfied by the evidence.
+      fail:
+        description: At least one surrogate gate is unmet.
+      blocked:
+        description: A blocking-tier gate needs human-supplied ground truth.
+
+classes:
+  Session:
+    description: >-
+      A self-contained, human-sortable run of one phase. Sessions chain through
+      their predecessor to form a campaign thread walkable over years.
+    attributes:
+      id:
+        description: Human-sortable id, YYYYMMDDTHHMMSSZ-<slug> (UTC).
+        identifier: true
+      phase:
+        range: Phase
+        required: true
+      predecessor:
+        description: Id of the session this one continues from (empty for the first).
+        range: string
+      created_at:
+        range: datetime
+        required: true
+      verdict:
+        description: Set only for judge sessions.
+        range: Verdict
+      summary:
+        description: One-paragraph human-readable summary of what this session did.
+
+  Finding:
+    description: >-
+      A durable claim produced during a session, stamped with when it was
+      observed and the conditions under which it held true.
+    attributes:
+      id:
+        identifier: true
+      statement:
+        description: The claim itself, in plain language.
+        required: true
+      observed_at:
+        range: datetime
+        required: true
+      conditions:
+        description: The conditions under which the claim was true (machine, config, inputs).
+      session:
+        description: Id of the session that produced this finding.
+        range: string
+        required: true
+
+  OracleGate:
+    description: A single completion criterion checked against evidence.
+    attributes:
+      id:
+        identifier: true
+      name:
+        required: true
+      tier:
+        range: GateTier
+        required: true
+      criterion:
+        description: Human-readable done condition.
+        required: true
+      command:
+        description: Shell command that evaluates a surrogate gate (empty for blocking gates).
+
+  PlanState:
+    description: >-
+      The agreed plan crossing the plan->implement boundary — the signed
+      contract the worker and judge are measured against.
+    attributes:
+      id:
+        identifier: true
+      project:
+        required: true
+      intent:
+        description: Expanded specification, feature list, and constraints.
+      tasks:
+        description: Ordered task units, each with a write scope and verification command.
+        multivalued: true
+        range: string
+      gates:
+        description: Ids of the oracle gates that define done for this plan.
+        multivalued: true
+        range: string
+      agreed_at:
+        description: When the human signed off on the plan as the contract.
+        range: datetime
