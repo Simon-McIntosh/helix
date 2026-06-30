@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="docs-project"   content="helix">
+  <meta name="reckon-type"    content="plan">
+  <meta name="plan-slug"      content="bootstrap">
+  <meta name="plan-title"     content="Helix Bootstrap">
+  <meta name="plan-summary"   content="Scaffold Helix and drive it to self-hosting: a dumb plan-implement-judge loop around a smart native worker.">
+  <meta name="plan-status"    content="active">
+  <meta name="plan-roi"       content="high">
+  <meta name="plan-effort"    content="L">
+  <meta name="plan-tier"      content="opus">
+  <meta name="plan-milestone" content="M1">
+  <meta name="plan-owner"     content="Simon McIntosh">
+  <meta name="plan-impl"      content="0.14">
+  <title>Helix Bootstrap | helix</title>
+  <link rel="stylesheet" href="/_shared/foundation.css">
+  <link rel="stylesheet" href="/_shared/dashboard.css">
+</head>
+<body>
+  <main class="plan-doc">
+
+    <h2 id="s1">§1 — What we are building</h2>
+    <p><strong>Helix</strong> is a long-horizon agent orchestrator: a
+    <em>dumb</em> outer loop with three disciplined phases — <strong>plan,
+    implement, judge</strong> — wrapped around a <em>smart</em> native worker.
+    The loop holds no model judgment; it composes prompts from files, invokes
+    the worker, runs a tiered completion oracle, enforces caps and gates, and
+    persists state. The durable record — plain-text artifacts plus git history —
+    is the asset, not any single agent session.</p>
+    <p>The markdown source of truth for this design lives at
+    <code>docs/specs/2026-06-30-helix-bootstrap-design.md</code>. This page is
+    the rendered human lens over it; the markdown wins on any disagreement.</p>
+
+    <h2 id="s2">§2 — The loop</h2>
+    <figure style="margin:1.5rem 0;">
+      <svg viewBox="0 0 760 250" width="100%" style="max-width:760px;font-family:system-ui,-apple-system,sans-serif;" role="img" aria-label="The plan, implement, judge loop">
+        <defs>
+          <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L7,3 L0,6 Z" fill="#1a1a1a"></path>
+          </marker>
+        </defs>
+        <!-- Plan box: thin accent top-rule marks the human seat -->
+        <rect x="20" y="70" width="170" height="74" rx="6" fill="#ffffff" stroke="#333" stroke-width="1"></rect>
+        <rect x="20" y="70" width="170" height="4" rx="2" fill="#2563eb"></rect>
+        <text x="105" y="100" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">plan</text>
+        <text x="105" y="120" text-anchor="middle" font-size="12" fill="#444">human seat ·</text>
+        <text x="105" y="135" text-anchor="middle" font-size="12" fill="#444">interactive</text>
+
+        <!-- Implement box -->
+        <rect x="295" y="70" width="170" height="74" rx="6" fill="#ffffff" stroke="#333" stroke-width="1"></rect>
+        <text x="380" y="100" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">implement</text>
+        <text x="380" y="120" text-anchor="middle" font-size="12" fill="#444">autonomous ·</text>
+        <text x="380" y="135" text-anchor="middle" font-size="12" fill="#444">fresh context</text>
+
+        <!-- Judge box -->
+        <rect x="570" y="70" width="170" height="74" rx="6" fill="#ffffff" stroke="#333" stroke-width="1"></rect>
+        <text x="655" y="100" text-anchor="middle" font-size="15" font-weight="600" fill="#1a1a1a">judge</text>
+        <text x="655" y="120" text-anchor="middle" font-size="12" fill="#444">independent ·</text>
+        <text x="655" y="135" text-anchor="middle" font-size="12" fill="#444">verdict</text>
+
+        <!-- plan -> implement -->
+        <line x1="190" y1="107" x2="291" y2="107" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#arrow)"></line>
+        <text x="240" y="98" text-anchor="middle" font-size="11" fill="#2563eb">agreed plan</text>
+        <text x="240" y="62" text-anchor="middle" font-size="11" fill="#2563eb">(the contract)</text>
+
+        <!-- implement -> judge -->
+        <line x1="465" y1="107" x2="566" y2="107" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#arrow)"></line>
+        <text x="515" y="98" text-anchor="middle" font-size="11" fill="#444">evidence</text>
+
+        <!-- judge -> implement loopback (fail) -->
+        <path d="M655,144 L655,200 L380,200 L380,146" fill="none" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#arrow)"></path>
+        <text x="517" y="216" text-anchor="middle" font-size="11" fill="#444">fail → iterate (loop until oracle passes / cap / gate)</text>
+
+        <!-- surrogate gate note on implement->judge -->
+        <text x="380" y="32" text-anchor="middle" font-size="11" fill="#444">surrogate gate runs every iteration (backpressure)</text>
+        <line x1="200" y1="40" x2="560" y2="40" stroke="#ccc" stroke-width="1" stroke-dasharray="3 3"></line>
+
+        <!-- verdict out -->
+        <text x="655" y="166" text-anchor="middle" font-size="11" fill="#444">pass · blocked</text>
+      </svg>
+      <figcaption style="font-size:12px;color:#555;margin-top:.4rem;">
+        The three phases are distinct worker invocations with fresh context,
+        handing off through files. The judge is always separate from the worker.
+        A <code>blocking</code>-tier gate (slow / physical experiment) pauses the
+        loop and waits for human-supplied ground truth.
+      </figcaption>
+    </figure>
+
+    <h2 id="s3">§3 — Fixed design choices</h2>
+    <ol>
+      <li><strong>Dumb orchestration, smart worker.</strong> No model judgment in
+      the loop; never reimplement the worker's tool surface (model-harness fit).</li>
+      <li><strong>Phase separation, fresh context.</strong> Plan / implement /
+      judge hand off through files; the judge is always a separate invocation.</li>
+      <li><strong>Markdown-and-files as truth; HTML as a rendered lens.</strong></li>
+      <li><strong>The human's seat is the plan phase.</strong> The agreed plan is
+      a signed contract.</li>
+      <li><strong>A tiered completion oracle.</strong> Fast surrogate checks each
+      iteration; slow / physical blocking gates pause for human ground truth.</li>
+      <li><strong>Provenance and session chaining are first-class.</strong>
+      Self-contained, human-sortable sessions; age- and condition-stamped findings.</li>
+      <li><strong>Parallel where idempotent, serial at the gate.</strong></li>
+      <li><strong>Project-agnostic core, project-specific data.</strong> Drift is
+      the chief long-term risk and is designed against. reckon is composed, never
+      absorbed.</li>
+    </ol>
+
+    <h2 id="s4">§4 — Roadmap</h2>
+    <p>We skip the throwaway bash-loop stage (the loop pattern is validated) and
+    go straight to the structured harness. Stop and <em>use</em> Helix after each
+    stage.</p>
+    <ul>
+      <li><strong>P0 — Scaffold &amp; init ✅ (shipped this session).</strong> Repo
+      skeleton, pyproject (uv, Python ≥3.13), LinkML schema → generated pydantic
+      models, base phase prompts, README/AGENTS/CLAUDE, CC BY-ND 4.0 license, git
+      init + public GitHub remote + first push, markdown plan + this reckon lens.
+      Surrogate baseline (tests) green.</li>
+      <li><strong>P1 — Phase-separated loop + fresh judge (the ~80% of value).</strong>
+      Build <code>loop.py</code>, <code>worker.py</code>, <code>phases/*</code>,
+      <code>oracle.py</code> (surrogate tier), <code>state.py</code>. Prove
+      plan→implement→judge on Helix itself, with the test suite as the fast oracle.</li>
+      <li><strong>P2 — Interactive planning entry + clean session handoff.</strong></li>
+      <li><strong>P3 — Session management &amp; provenance.</strong> Chaining,
+      age-stamped findings, the <code>status</code> command, chain walking.</li>
+      <li><strong>P4 — Project-agnostic core split + anti-drift check.</strong></li>
+      <li><strong>P5 — Human lens.</strong> On-demand HTML rendering via reckon and
+      chain-walking review tools.</li>
+      <li><strong>Milestone — self-hosting.</strong> Helix drives its own
+      development through its own loop — the honest signal the harness is real.</li>
+    </ul>
+
+    <section data-reckon="decisions" id="decisions" class="r-decisions">
+      <h2><span class="sec">§</span> Decisions</h2>
+      <div class="r-dec" data-key="license" data-choice="CC BY-ND 4.0" data-by="Simon McIntosh" data-when="2026-06-30">
+        <p class="r-dec-q">What license should Helix carry?</p>
+        <p class="r-dec-rat">CC BY-ND 4.0, matching imas-codex; reckon was
+        relicensed to match in the same session.</p>
+      </div>
+      <div class="r-dec" data-key="layout" data-choice="flat helix/helix/" data-by="Simon McIntosh" data-when="2026-06-30">
+        <p class="r-dec-q">Package layout — src/ or flat repeated-name?</p>
+        <p class="r-dec-rat">Flat <code>helix/helix/</code> to match sibling repos;
+        src/ only buys import-isolation we do not need.</p>
+      </div>
+      <div class="r-dec" data-key="schema" data-choice="LinkML → generated pydantic" data-by="Simon McIntosh" data-when="2026-06-30">
+        <p class="r-dec-q">How are state record types defined?</p>
+        <p class="r-dec-rat">LinkML (<code>schema/helix.yaml</code>) is the single
+        source of truth; pydantic v2 models generated via <code>gen-pydantic</code>
+        into <code>helix/models.py</code> (not hand-edited).</p>
+      </div>
+      <div class="r-dec" data-key="plan-substrate" data-choice="markdown truth + reckon lens" data-by="Simon McIntosh" data-when="2026-06-30">
+        <p class="r-dec-q">How is the plan tracked?</p>
+        <p class="r-dec-rat">Markdown design doc is the source of truth; this
+        reckon HTML plan is the rendered lens. Helix core imports nothing from
+        reckon.</p>
+      </div>
+    </section>
+
+    <section data-reckon="followups" id="followups" class="r-followups">
+      <h2><span class="sec">§</span> Followups</h2>
+      <article class="r-fu" data-id="f-helix-p1" data-status="open" data-tier="opus" data-written-by="reckon-create" data-written-at="2026-06-30">
+        <h4 class="r-fu-title">P1 — Build the phase-separated loop with a fresh judge</h4>
+        <div class="r-fu-body">The ~80%-value core. Implement the dumb outer loop
+        and its phase invocations so an autonomous run can make a verified
+        increment on Helix itself, with the test suite as the surrogate oracle.
+        This is the step that makes Helix real enough to start self-hosting.</div>
+        <pre class="r-fu-prompt">Project: helix
+Plan:    bootstrap (http://localhost:8765/helix/bootstrap.html)
+Section: §4 P1
+Tier:    opus
+
+Context
+  P0 scaffolding has shipped: package skeleton, schema-generated models, base
+  phase prompts, and a green test baseline. The modules currently raise
+  NotImplementedError by design. P1 makes the outer loop real on Helix itself.
+
+State to read  (code/files, not the plan)
+  helix/loop.py, helix/worker.py, helix/oracle.py, helix/state.py
+  helix/phases/implement.py, helix/phases/judge.py
+  prompts/implement.md, prompts/judge.md
+  schema/helix.yaml, helix/models.py
+  docs/specs/2026-06-30-helix-bootstrap-design.md (the design source of truth)
+
+Scope locks / constraints (non-decision)
+  - Never reimplement/wrap the native worker's tool surface; worker.py only
+    sets context and invokes a fresh worker process.
+  - No model judgment in the loop or phases — compose prompts, invoke, run the
+    oracle, persist state.
+  - Markdown+frontmatter via state.py is the source of truth; do not introduce
+    a sidecar database.
+  - Keep the core project-agnostic; no Helix-specific knowledge in the core.
+
+Done-when
+  1. `helix run` drives implement→judge against a small task with the test
+     suite as the surrogate oracle, halting on pass / fail / cap.
+  2. Sessions are written to sessions/ with the schema's record shape.
+  3. Tests still green (and grow to cover loop/oracle/state).
+  4. Followup written into plan + this followup marked resolved.</pre>
+      </article>
+    </section>
+
+  </main>
+</body>
+</html>
