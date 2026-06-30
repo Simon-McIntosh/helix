@@ -79,7 +79,7 @@ stage; later stages are about scaling across projects and years, not capability.
 
 - **P0 — Scaffold & init** ✅ *(this session)*
   Repo skeleton, pyproject (uv, Python ≥3.13), LinkML schema + generated models,
-  base phase prompts, README/AGENTS/CLAUDE, LICENSE (CC BY-ND 4.0), git init,
+  base phase prompts, README/AGENTS/CLAUDE, LICENSE (MIT), git init,
   GitHub remote, first push, markdown plan + reckon lens. Surrogate baseline
   (tests) green.
 
@@ -113,7 +113,8 @@ stage; later stages are about scaling across projects and years, not capability.
 
 ## 6. Decisions locked this session
 
-- **License:** CC BY-ND 4.0 (matches imas-codex; relicensed reckon to match).
+- **License:** MIT (permissive/open; CC BY-ND was rejected — NoDerivatives is
+  wrong for code meant to be extended). reckon is also MIT.
 - **Layout:** flat `helix/helix/` (matches sibling repos), not `src/`.
 - **Python:** ≥3.13.
 - **CLI:** typer + rich.

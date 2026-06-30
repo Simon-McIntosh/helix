@@ -8,7 +8,7 @@ description: >-
   criteria), and the plan state (the signed contract crossing plan->implement).
   pydantic v2 models are generated from this schema with `gen-pydantic` (see
   helix/models.py).
-license: CC BY-ND 4.0
+license: MIT
 
 prefixes:
   linkml: https://w3id.org/linkml/

@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "A long-horizon agent orchestrator: a dumb plan-implement-judge loop around a smart native worker."
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "CC BY-ND 4.0" }
+license = { text = "MIT" }
 license-files = ["LICENSE"]
 authors = [{ name = "Simon McIntosh", email = "simon.mcintosh@iter.org" }]
 keywords = [
@@ -15,7 +15,7 @@ keywords = [
     "plan-implement-judge",
 ]
 classifiers = [
-    "License :: Other/Proprietary License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Application Frameworks",

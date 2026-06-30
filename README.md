@@ -94,4 +94,4 @@ being built phase by phase (see `docs/specs/`). The near-term milestone is
 
 ## License
 
-Released under [CC BY-ND 4.0](LICENSE). © Simon McIntosh.
+Released under the [MIT License](LICENSE). © 2026 Simon McIntosh.
