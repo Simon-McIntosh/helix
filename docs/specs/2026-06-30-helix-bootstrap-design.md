@@ -136,10 +136,37 @@ stage; later stages are about scaling across projects and years, not capability.
   the artifact, chained sessions); the test suite grew from 33 to 43 passing and
   stays green (lint clean).
 
-- **P3 — Session management & provenance**
-  Self-contained sessions, predecessor chaining, age-stamped findings, and the
-  commit/push discipline for the durable record. Implement the `status` command
-  and chain walking.
+- **P3 — Session management & provenance** ✅
+  Shipped, with rich observability folded in. Sessions were already chained on
+  disk (P1); P3 makes the provenance layer first-class and makes a running
+  worker *watchable from outside*.
+  - `session.py` — `walk_chain` follows the `predecessor` links into one
+    coherent campaign thread (not merely everything on disk); `iter_sessions`
+    for chronological listing; `record_findings`/`read_findings` persist
+    schema-shaped `Finding` records, age- (`observed_at`) and condition-stamped,
+    rediscoverable by the walker. `prepare_session`/`write_record` split the
+    session write so evidence can stream in *before* the record is finalized.
+  - `worker.invoke` — streams the worker's output line by line to an optional
+    `sink` file (so `tail -f sessions/<id>/evidence/worker.txt` follows it live)
+    and an `on_line` callback, with a threaded stdin feed (no pipe deadlock) and
+    a timer-based timeout.
+  - `observe.py` — a *projection* (never steering, never reimplementing tools)
+    that renders a Claude Code `stream-json` trace as a legible train-of-thought:
+    init header, assistant text, dimmed thinking, `→ tool(summary)` actions,
+    `← result (ok/err, N chars)`, and a `✓ done — turns/cost/duration` footer.
+    Data is Rich-escaped; plain-text workers pass through unstructured.
+  - `judge.py` — findings are now persisted as `Finding` records.
+  - `cli.py` — `helix status` (read-only: walks the chain, shows verdicts,
+    gates, and recent findings), `helix watch` (replay a session's trace), and
+    `helix run --stream` (live train-of-thought as the worker works).
+  - `helix.yaml` — the worker emits `--output-format stream-json --verbose`.
+
+  *Done-when, met:* verified with a **real `claude` worker** — `helix run`
+  streamed its train-of-thought and actions live (init → Bash/Write actions →
+  reasoning → done footer) to a `pass` verdict; `helix status`/`helix watch`
+  render the chain and trace; the raw trace is newline-delimited JSON and
+  `tail -f`-able. Findings persist as age-/condition-stamped `Finding` records.
+  The test suite grew from 43 to 65 passing and stays green (lint clean).
 
 - **P4 — Project-agnostic core split + anti-drift check**
   Formalize core vs overlay; per-project data as small diffs; a check that
