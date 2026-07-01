@@ -12,8 +12,9 @@ holds no model judgment: it decides nothing about whether the work is done.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from helix import session, worker
@@ -71,35 +72,46 @@ def run(
     slug: str,
     predecessor: str | None = None,
     now: datetime | None = None,
+    observer: Callable[[str], None] | None = None,
 ) -> ImplementResult:
-    """Compose the prompt, run the worker in the repo, and persist a session."""
+    """Compose the prompt, run the worker in the repo, and persist a session.
+
+    The session directory is created *before* the worker runs so its trace
+    streams into ``evidence/worker.txt`` live (tail-able during the run). An
+    optional ``observer`` is called with each output line for a live rendered
+    train-of-thought (see :mod:`helix.observe`).
+    """
     project = Path(project)
     sessions_dir = Path(sessions_dir)
     repo = (project / config.repo).resolve()
+    now = now or datetime.now(UTC)
 
     prompt = compose_prompt(config, project, sessions_dir)
+    session_id, session_dir = session.prepare_session(sessions_dir, slug=slug, now=now)
+    (session_dir / "evidence" / "prompt.txt").write_text(prompt)
+
     output = worker.invoke(
         prompt,
         cwd=repo,
         command=config.worker.command,
         timeout_s=config.worker.timeout_s,
+        sink=session_dir / "evidence" / "worker.txt",
+        on_line=observer,
     )
 
     summary = f"Worker ran in `{repo.name}` ({len(output)} chars of output)."
     body = (
         f"# implement session\n\nThe worker was invoked with a fresh context in "
         f"`{repo}`. See `evidence/prompt.txt` for the composed prompt and "
-        f"`evidence/worker.txt` for the worker's output."
+        f"`evidence/worker.txt` for the worker's (streamed) output."
     )
-    session_id, session_dir = session.write_session(
-        sessions_dir,
+    session.write_record(
+        session_dir,
+        id=session_id,
         phase="implement",
-        slug=slug,
-        now=now,
+        created_at=now,
         predecessor=predecessor,
         summary=summary,
         body=body,
     )
-    (session_dir / "evidence" / "prompt.txt").write_text(prompt)
-    (session_dir / "evidence" / "worker.txt").write_text(output)
     return ImplementResult(id=session_id, session_dir=session_dir, output=output)

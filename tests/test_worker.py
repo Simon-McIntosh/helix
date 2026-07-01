@@ -45,3 +45,34 @@ def test_converse_passes_prompt_as_opening_argv_and_runs_in_cwd(tmp_path):
 
 def test_converse_returns_worker_exit_code(tmp_path):
     assert converse("x", cwd=tmp_path, command=["sh", "-c", "exit 3", "x"]) == 3
+
+
+def test_invoke_streams_to_sink_file_live(tmp_path):
+    sink = tmp_path / "stream.txt"
+    out = invoke(
+        "ignored",
+        cwd=tmp_path,
+        command=["sh", "-c", "printf 'a\\nb\\nc\\n'"],
+        sink=sink,
+    )
+    # The sink captured the stream as it arrived, matching the returned output.
+    assert sink.read_text() == "a\nb\nc\n"
+    assert out == "a\nb\nc\n"
+
+
+def test_invoke_calls_on_line_per_line(tmp_path):
+    seen = []
+    invoke(
+        "ignored",
+        cwd=tmp_path,
+        command=["sh", "-c", "printf 'one\\ntwo\\n'"],
+        on_line=seen.append,
+    )
+    assert seen == ["one", "two"]
+
+
+def test_invoke_times_out(tmp_path):
+    import subprocess
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        invoke("x", cwd=tmp_path, command=["sh", "-c", "sleep 5"], timeout_s=1)

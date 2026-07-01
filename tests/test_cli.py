@@ -5,6 +5,8 @@ turns the verdict into an exit code (pass -> 0, fail/exhausted -> 1, blocked ->
 2), so shell orchestration and CI can act on the result.
 """
 
+import json
+
 import yaml
 from typer.testing import CliRunner
 
@@ -86,3 +88,55 @@ def test_plan_draft_leaves_contract_unsealed(tmp_path):
     assert "draft" in result.stdout
     fm, _ = read_doc(project / "PLAN.md")
     assert "agreed_at" not in fm
+
+
+# A worker that emits a stream-json assistant line (so the trace renders) and
+# satisfies the done gate.
+_ASSISTANT_LINE = json.dumps(
+    {
+        "type": "assistant",
+        "message": {"content": [{"type": "text", "text": "working on it"}]},
+    }
+)
+_STREAMING_WORKER = [
+    "sh",
+    "-c",
+    f"cat >/dev/null; printf '%s\\n' '{_ASSISTANT_LINE}'; : > done.txt",
+]
+
+
+def test_status_shows_chain_verdict_and_findings(tmp_path):
+    project = _project(tmp_path, _STREAMING_WORKER, _DONE_GATE)
+    assert runner.invoke(app, ["run", str(project), "--quiet"]).exit_code == 0
+
+    result = runner.invoke(app, ["status", str(project)])
+
+    assert result.exit_code == 0
+    assert "session(s) in chain" in result.stdout
+    assert "pass" in result.stdout  # latest verdict
+    assert "implement" in result.stdout and "judge" in result.stdout
+    assert "done" in result.stdout  # the configured gate id/criterion
+    assert "Recent findings" in result.stdout
+
+
+def test_status_no_sessions_is_graceful(tmp_path):
+    project = _project(tmp_path, ["true"], _DONE_GATE)
+    result = runner.invoke(app, ["status", str(project)])
+    assert result.exit_code == 0
+    assert "no sessions yet" in result.stdout
+
+
+def test_run_stream_renders_train_of_thought(tmp_path):
+    project = _project(tmp_path, _STREAMING_WORKER, _DONE_GATE)
+    result = runner.invoke(app, ["run", str(project), "--stream"])
+    assert result.exit_code == 0
+    assert "working on it" in result.stdout  # rendered from the worker's stream
+
+
+def test_watch_replays_a_session_trace(tmp_path):
+    project = _project(tmp_path, _STREAMING_WORKER, _DONE_GATE)
+    assert runner.invoke(app, ["run", str(project), "--quiet"]).exit_code == 0
+
+    result = runner.invoke(app, ["watch", str(project)])
+    assert result.exit_code == 0
+    assert "working on it" in result.stdout

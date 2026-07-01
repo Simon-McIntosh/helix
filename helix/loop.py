@@ -18,6 +18,7 @@ verdict belongs to a separate judge invocation.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -38,7 +39,13 @@ class LoopResult:
     sessions: list[str] = field(default_factory=list)
 
 
-def run_loop(project: Path, max_iterations: int | None = None) -> LoopResult:
+def run_loop(
+    project: Path,
+    max_iterations: int | None = None,
+    *,
+    observer: Callable[[str], None] | None = None,
+    announce: Callable[[str], None] | None = None,
+) -> LoopResult:
     """Drive implement->judge iterations until the oracle passes or a cap/gate halts.
 
     Each iteration is a fresh restart: the implement phase invokes the worker and
@@ -61,12 +68,15 @@ def run_loop(project: Path, max_iterations: int | None = None) -> LoopResult:
     sessions: list[str] = []
 
     for i in range(cap):
+        if announce is not None:
+            announce(f"iteration {i + 1}/{cap} — implement")
         impl = implement.run(
             config,
             project,
             sessions_dir=sessions_dir,
             slug=f"{i:02d}-implement",
             predecessor=last_id,
+            observer=observer,
         )
         last_id = impl.id
         sessions.append(impl.id)
@@ -80,6 +90,8 @@ def run_loop(project: Path, max_iterations: int | None = None) -> LoopResult:
         )
         last_id = verdict.id
         sessions.append(verdict.id)
+        if announce is not None:
+            announce(f"iteration {i + 1}/{cap} — judge verdict: {verdict.verdict}")
 
         if verdict.verdict in (oracle.PASS, oracle.BLOCKED):
             return LoopResult(verdict.verdict, i + 1, sessions)

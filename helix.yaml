@@ -17,11 +17,16 @@ plan: docs/specs/2026-06-30-helix-bootstrap-design.md
 
 # How to invoke the native worker. The composed prompt is fed on stdin; the
 # worker uses its own tools, skills, and edit format (model-harness fit — Helix
-# never reimplements the worker's tool surface). For a fully autonomous inner
-# loop the operator may add a permission flag (e.g. `--permission-mode`,
-# `acceptEdits`) so edits land without prompting.
+# never reimplements the worker's tool surface).
+#
+# `--output-format stream-json --verbose` makes the worker emit its train-of-
+# thought and actions as a newline-delimited event stream, which Helix streams
+# live to each session's evidence/worker.txt (tail -f it, or watch `helix run`'s
+# rendered view; see helix/observe.py). For a fully autonomous inner loop add a
+# permission flag (e.g. `--permission-mode acceptEdits`) so edits land without
+# prompting.
 worker:
-  command: ["claude", "-p"]
+  command: ["claude", "-p", "--output-format", "stream-json", "--verbose"]
   timeout_s: 1800
 
 # Bounds that halt the loop independent of the oracle.

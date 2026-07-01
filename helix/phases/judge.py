@@ -37,13 +37,11 @@ def _gates_evidence(result: oracle.OracleResult) -> str:
     return "\n\n".join(lines) + "\n"
 
 
-def _finding(result: oracle.OracleResult, repo: Path, observed_at: datetime) -> str:
+def _finding_statement(result: oracle.OracleResult) -> str:
     gate_ids = ", ".join(o.id for o in result.outcomes) or "(none)"
     return (
-        f"# Findings\n\n"
-        f"## {observed_at.isoformat()} — verdict: {result.verdict}\n\n"
-        f"- Conditions: repo `{repo}`, gates [{gate_ids}].\n"
-        f"- Decided from evidence against criteria (surrogate oracle).\n"
+        f"Surrogate oracle verdict `{result.verdict}` over gates [{gate_ids}], "
+        f"decided from evidence against criteria."
     )
 
 
@@ -80,5 +78,12 @@ def run(
         body=body,
     )
     (session_dir / "evidence" / "gates.txt").write_text(_gates_evidence(result))
-    (session_dir / "findings.md").write_text(_finding(result, repo, observed_at))
+    gate_ids = ", ".join(o.id for o in result.outcomes) or "(none)"
+    session.record_findings(
+        session_dir,
+        [_finding_statement(result)],
+        session_id=session_id,
+        observed_at=observed_at,
+        conditions=f"repo={repo}; gates=[{gate_ids}]",
+    )
     return JudgeResult(id=session_id, verdict=result.verdict, session_dir=session_dir)
