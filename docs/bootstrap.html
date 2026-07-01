@@ -19,18 +19,20 @@
   <link rel="stylesheet" href="/_shared/foundation.css">
   <link rel="stylesheet" href="/_shared/dashboard.css">
 <meta name="plan-modified" content="2026-07-01">
-<meta name="plan-version" content="2">
+<meta name="plan-version" content="3">
 </head>
 <body>
   <main class="plan-doc">
 
     <section aria-label="Status and next steps" style="margin:0 0 1.75rem;padding:1rem 1.25rem;border:1px solid #d0d7de;border-left:4px solid #2563eb;border-radius:6px;background:#f8fafc;">
-      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 2 of 7 phases shipped (impl ≈ 0.28)</p>
+      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 3 of 7 phases shipped (impl ≈ 0.45)</p>
       <ul style="margin:.25rem 0 .75rem;padding-left:1.25rem;color:#1a1a1a;">
         <li><strong>P0 — Scaffold &amp; init</strong> ✅ shipped.</li>
-        <li><strong>P1 — Phase-separated loop + fresh judge</strong> ✅ shipped — the dumb outer loop runs <code>implement→judge</code> with the test suite as the surrogate oracle; <code>helix run</code> works end-to-end, sessions chain in <code>sessions/</code>, 33 tests green.</li>
-        <li><strong>P2 — Interactive planning entry</strong> ⟵ <strong>next</strong>: build the <code>plan</code> phase so a human co-authors the contract the loop consumes (see the open followup in the Followups panel).</li>
+        <li><strong>P1 — Phase-separated loop + fresh judge</strong> ✅ shipped — the dumb outer loop runs <code>implement→judge</code> with the test suite as the surrogate oracle; <code>helix run</code> works end-to-end, sessions chain in <code>sessions/</code>.</li>
+        <li><strong>P2 — Interactive planning entry</strong> ✅ shipped — the <code>plan</code> phase is the human's seat: <code>helix plan</code> co-authors a <code>PlanState</code> contract (tool writes metadata + the <code>agreed_at</code> signature; worker/human writes the body) that <code>helix run</code> consumes unchanged. Verified plan→implement→judge to a <code>pass</code>; 43 tests green.</li>
+        <li><strong>P3 — Session management &amp; provenance</strong> ⟵ <strong>next</strong>: make the provenance layer first-class — <code>helix status</code> walks the predecessor chain, findings are age-/condition-stamped <code>Finding</code> records. Sessions already chain on disk; P3 surfaces and stamps them (see the open followup in the Followups panel).</li>
       </ul>
+      <p style="margin:0 0 .5rem;color:#1a1a1a;"><strong>Handoff for the next session:</strong> the loop is now complete across all three phases (plan → implement → judge). Start P3 from <code>helix/session.py</code> (chaining), <code>helix/phases/judge.py</code> (<code>findings.md</code> authoring), and the <code>helix status</code> stub in <code>helix/cli.py</code>. The <code>Finding</code> record type already exists in <code>schema/helix.yaml</code> — persist findings in that shape and make the chain walker discover them. Keep the tool judgment-free: read disk, walk the chain, render state.</p>
       <p style="margin:0;color:#1a1a1a;">Full design &amp; roadmap: <a href="https://github.com/Simon-McIntosh/helix/blob/main/docs/specs/2026-06-30-helix-bootstrap-design.md">the bootstrap design markdown</a> — the source of truth. This page is the rendered lens over it.</p>
     </section>
 
@@ -145,7 +147,17 @@
       self-hosting <code>helix.yaml</code>. Sessions land in <code>sessions/</code>
       in the schema's <code>Session</code> shape and chain through predecessors;
       33 tests pass, lint clean.</li>
-      <li><strong>P2 — Interactive planning entry + clean session handoff.</strong></li>
+      <li><strong>P2 — Interactive planning entry + clean session handoff.</strong>
+      ✅ Shipped. The <code>plan</code> phase is the human's seat: <code>helix plan</code>
+      materializes a <code>PlanState</code> contract on disk — the tool writes the
+      deterministic metadata (<code>id</code>, <code>project</code>, the
+      <code>agreed_at</code> signature), the worker/human writes the judgment-laden
+      body — that <code>helix run</code> consumes unchanged. Built
+      <code>phases/plan.py</code> (<code>scaffold</code> → co-author → <code>seal</code>),
+      <code>worker.converse</code> (interactive human's-seat invocation, distinct from
+      the autonomous <code>worker.invoke</code>), a shared <code>base_prompt</code> in
+      <code>phases/__init__.py</code>, and wired <code>helix plan</code>. Verified
+      end-to-end plan→implement→judge to a <code>pass</code>; 43 tests pass, lint clean.</li>
       <li><strong>P3 — Session management &amp; provenance.</strong> Chaining,
       age-stamped findings, the <code>status</code> command, chain walking.</li>
       <li><strong>P4 — Project-agnostic core split + anti-drift check.</strong></li>
@@ -303,6 +315,11 @@ Done-when
     </article>
 </section>
 
-  </main>
+  <section data-reckon="comments" id="comments" class="r-comments">
+<div class="r-comment" data-section="s4" data-id="c-p2-handoff" data-who="claude" data-when="2026-07-01">
+    <div class="r-comment-body">P2 shipped (commit 50c5458): the plan phase is live and the plan→implement→judge loop is now complete across all three phases. Handoff to P3 (session management &amp; provenance): the disk substrate already chains sessions through their predecessor and the judge writes findings.md, so P3 is about surfacing and stamping, not rebuilding. Start points: helix/session.py (chaining), helix/phases/judge.py (findings authoring), the helix status stub in helix/cli.py, and the existing Finding record type in schema/helix.yaml. Keep the tool judgment-free — read disk, walk the chain, render state.</div>
+</div>
+</section>
+</main>
 </body>
 </html>
