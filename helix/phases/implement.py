@@ -18,10 +18,9 @@ from pathlib import Path
 
 from helix import session, worker
 from helix.config import Config
+from helix.phases import base_prompt
 from helix.state import read_doc
 
-# Base prompts ship alongside the package (repo layout: prompts/ beside helix/).
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 _RECENT_LIMIT = 3
 
 
@@ -32,17 +31,6 @@ class ImplementResult:
     id: str
     session_dir: Path
     output: str
-
-
-def _base_prompt(project: Path, phase: str) -> str:
-    """The base phase contract, project override first, then the packaged default."""
-    for candidate in (
-        project / "prompts" / f"{phase}.md",
-        _PROMPTS_DIR / f"{phase}.md",
-    ):
-        if candidate.exists():
-            return candidate.read_text()
-    return f"# {phase} phase\n\n(No base prompt found.)\n"
 
 
 def _recent_summaries(sessions_dir: Path) -> str:
@@ -63,7 +51,7 @@ def _recent_summaries(sessions_dir: Path) -> str:
 
 def compose_prompt(config: Config, project: Path, sessions_dir: Path) -> str:
     """Assemble the implement prompt: base contract + agreed plan + recent progress."""
-    sections = [_base_prompt(project, "implement")]
+    sections = [base_prompt(project, "implement")]
     if config.plan:
         plan_path = project / config.plan
         if plan_path.exists():

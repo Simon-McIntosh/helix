@@ -9,6 +9,7 @@ import yaml
 from typer.testing import CliRunner
 
 from helix.cli import app
+from helix.state import read_doc
 
 runner = CliRunner()
 
@@ -52,3 +53,36 @@ def test_run_exits_one_when_cap_is_exhausted(tmp_path):
     result = runner.invoke(app, ["run", str(project)])
     assert result.exit_code == 1
     assert "exhausted" in result.stdout
+
+
+def _plan_project(tmp_path, worker_command):
+    (tmp_path / "helix.yaml").write_text(
+        yaml.safe_dump(
+            {"repo": ".", "plan": "PLAN.md", "worker": {"command": worker_command}}
+        )
+    )
+    return tmp_path
+
+
+def test_plan_materializes_and_seals_the_contract(tmp_path):
+    worker = ["sh", "-c", 'printf "\\n## Intent\\n\\nDo X.\\n" >> PLAN.md', "x"]
+    project = _plan_project(tmp_path, worker)
+
+    result = runner.invoke(app, ["plan", str(project), "--intent", "do X", "--agree"])
+
+    assert result.exit_code == 0
+    assert "agreed" in result.stdout
+    fm, body = read_doc(project / "PLAN.md")
+    assert "agreed_at" in fm
+    assert "Do X." in body
+
+
+def test_plan_draft_leaves_contract_unsealed(tmp_path):
+    project = _plan_project(tmp_path, ["true"])
+
+    result = runner.invoke(app, ["plan", str(project), "--draft", "--no-worker"])
+
+    assert result.exit_code == 0
+    assert "draft" in result.stdout
+    fm, _ = read_doc(project / "PLAN.md")
+    assert "agreed_at" not in fm

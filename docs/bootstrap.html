@@ -14,12 +14,12 @@
   <meta name="plan-tier" content="opus">
   <meta name="plan-milestone" content="M1">
   <meta name="plan-owner" content="Simon McIntosh">
-  <meta name="plan-impl" content="0.28">
+  <meta name="plan-impl" content="0.45">
   <title>Helix Bootstrap | helix</title>
   <link rel="stylesheet" href="/_shared/foundation.css">
   <link rel="stylesheet" href="/_shared/dashboard.css">
 <meta name="plan-modified" content="2026-07-01">
-<meta name="plan-version" content="1">
+<meta name="plan-version" content="2">
 </head>
 <body>
   <main class="plan-doc">
@@ -223,7 +223,7 @@ Done-when
   4. Followup written into plan + this followup marked resolved.</pre>
     <p class="r-fu-outcome">Shipped in commit <code>c5174ba</code>. The dumb outer loop drives <code>implement→judge</code> iterations that hand off through files, with the surrogate oracle (the test suite) as fast backpressure and <strong>no model judgment in the loop or phases</strong>. Built <code>state.py</code> (markdown+frontmatter substrate), <code>config.py</code> (project run config), <code>oracle.py</code> (tiered gate evaluation → pass/fail/blocked), <code>worker.py</code> (native-worker subprocess; prompt on stdin, no tool reimplementation), <code>session.py</code> <code>write_session</code>, <code>phases/implement.py</code> and <code>phases/judge.py</code> (the judge an independent, mechanical oracle verdict — never the worker), <code>loop.py</code> + wired <code>helix run</code>, and the self-hosting <code>helix.yaml</code>. <strong>Done-when met:</strong> <code>helix run</code> drives implement→judge and halts on pass/fail/cap; sessions are written to <code>sessions/</code> in the schema's <code>Session</code> record shape and chain through their predecessor; the test suite grew to 33 passing across loop/oracle/state/phases and stays green (lint clean).</p>
     </article>
-<article class="r-fu" data-id="f-helix-p2" data-status="open" data-tier="opus" data-written-by="claude" data-written-at="2026-07-01" data-recommends-skill="/reckon-ship bootstrap §4 P2" data-resolved-at="" data-resolved-by="">
+<article class="r-fu" data-id="f-helix-p2" data-status="resolved" data-tier="opus" data-written-by="claude" data-written-at="2026-07-01" data-recommends-skill="/reckon-ship bootstrap §4 P2" data-resolved-at="2026-07-01T14:06:26+00:00" data-resolved-by="claude">
     <h4 class="r-fu-title">P2 — Interactive planning entry + clean session handoff</h4>
     <div class="r-fu-body">With the autonomous loop real (P1 shipped), build the <strong>plan</strong> phase: how a human co-authors a plan and materializes the contract the loop consumes. The tool writes deterministic metadata (the <code>PlanState</code> record); the worker/human writes the judgment-laden content. Close the loop so a planned contract flows straight into <code>helix run</code>.</div>
     <pre class="r-fu-prompt">Project: helix
@@ -259,6 +259,46 @@ Done-when
      helix run consumes end-to-end (plan -&gt; implement -&gt; judge).
   2. Sessions/handoff stay clean: fresh context per phase, files as the handoff.
   3. Tests still green and grow to cover the plan phase.
+  4. Followup written into plan + this followup marked resolved.</pre>
+    <p class="r-fu-outcome">Shipped. The <strong>plan</strong> phase is the human's seat: it materializes a <code>PlanState</code>-shaped contract on disk that <code>helix run</code> consumes unchanged. Strict determinism boundary — the <em>tool</em> writes metadata (<code>PlanState</code> frontmatter: <code>id</code>, <code>project</code>, the <code>agreed_at</code> signature); the <em>worker/human</em> writes the judgment-laden body (Intent, Tasks, oracle gates). Built <code>phases/plan.py</code> (three moves: <code>scaffold</code> → materialize the skeleton, preserving an existing draft on re-entry; <code>compose_prompt</code>; <code>seal</code> → stamp <code>agreed_at</code>; <code>run</code> orchestrates and persists a chained <code>plan</code> session, no model judgment), <code>worker.converse</code> (interactive human's-seat invocation — composed prompt as the worker's opening message, worker inherits the terminal; distinct from the autonomous <code>worker.invoke</code>), factored <code>base_prompt</code> into <code>phases/__init__.py</code> (shared by plan+implement), and wired <code>helix plan &lt;project&gt; [--intent …] [--agree/--draft] [--out …] [--no-worker]</code>. <strong>Done-when met:</strong> verified directly end-to-end — <code>helix plan</code> co-authored + sealed a contract, then <code>helix run</code> consumed it (planned intent flowed into the implement prompt) driving plan→implement→judge to a <code>pass</code> verdict; handoff clean (fresh context per phase, files as the artifact, chained sessions); the test suite grew from 33 to 43 passing and stays green (lint clean).</p>
+    </article>
+<article class="r-fu" data-id="f-helix-p3" data-status="open" data-tier="opus" data-written-by="claude" data-written-at="2026-07-01" data-recommends-skill="/reckon-ship bootstrap §4 P3" data-resolved-at="" data-resolved-by="">
+    <h4 class="r-fu-title">P3 — Session management &amp; provenance</h4>
+    <div class="r-fu-body">With plan→implement→judge shipped (P2) and sessions already chained on disk, formalize the <strong>provenance</strong> layer: self-contained sessions, predecessor chain walking, age- and condition-stamped findings, and the <code>helix status</code> command that surfaces campaign state. This is the lab-notebook role — the durable record that makes multi-year campaigns navigable.</div>
+    <pre class="r-fu-prompt">Project: helix
+Plan:    bootstrap (http://localhost:8765/helix/bootstrap.html)
+Section: §4 P3
+Tier:    opus
+
+Context
+  P2 shipped the plan phase: helix plan materializes a PlanState contract that
+  helix run consumes end-to-end, writing chained plan/implement/judge Session
+  records to sessions/. Sessions already carry a predecessor and findings.md is
+  written by the judge. P3 makes the provenance layer first-class: walk the
+  chain, surface campaign state, and age-/condition-stamp findings so the
+  durable record knows when and under what conditions each claim held.
+  (Honour the locked / surface the open decisions shown live above — don&#x27;t re-list.)
+
+State to read  (code/files, not the plan URL)
+  helix/session.py (write_session, new_session_id, chaining)
+  helix/phases/judge.py (findings.md authoring), helix/state.py
+  helix/models.py + schema/helix.yaml (Session, Finding record types)
+  helix/cli.py (the status command is currently a stub)
+  helix/loop.py (how sessions are produced across iterations)
+
+Scope locks / constraints (non-decision)
+  - Markdown+frontmatter is the source of truth; no sidecar database.
+  - Findings are age- and condition-stamped; verify-at-read-time, default to
+    NOT saving what the repo/git already records.
+  - Keep the core project-agnostic; domain knowledge stays in project overlays.
+  - No model judgment in the tool — read disk, walk the chain, render state.
+
+Done-when
+  1. helix status walks the predecessor chain and surfaces campaign state
+     (latest session, chain, verdicts, open gates, recent findings).
+  2. Findings are persisted as schema-shaped Finding records, age- and
+     condition-stamped, discoverable by the chain walker.
+  3. Tests still green and grow to cover session chaining + status.
   4. Followup written into plan + this followup marked resolved.</pre>
     </article>
 </section>

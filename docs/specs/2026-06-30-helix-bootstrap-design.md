@@ -109,10 +109,32 @@ stage; later stages are about scaling across projects and years, not capability.
   predecessor; the test suite grew to 33 passing across loop/oracle/state/phases
   and stays green.
 
-- **P2 — Interactive planning entry + clean session handoff**
-  Build the `plan` phase: how a human co-authors a plan and materializes the
-  contract the loop consumes. Tool writes deterministic metadata; worker writes
-  judgment-laden content.
+- **P2 — Interactive planning entry + clean session handoff** ✅
+  Shipped. The `plan` phase is the human's seat: it materializes a
+  `PlanState`-shaped contract on disk that `helix run` consumes unchanged. The
+  determinism boundary is strict — the *tool* writes metadata (`PlanState`
+  frontmatter: `id`, `project`, and the `agreed_at` signature); the
+  *worker/human* writes the judgment-laden body (Intent, Tasks, oracle gates).
+  - `phases/plan.py` — three moves: `scaffold` (materialize the `PlanState`
+    skeleton, preserving an existing draft on re-entry), `compose_prompt` (base
+    contract + overlay + where-to-write + current draft), and `seal` (stamp
+    `agreed_at` — the human's signature turning a draft into the contract). `run`
+    orchestrates them and persists a chained `plan` session; no model judgment.
+  - `worker.converse` — the interactive human's-seat invocation: the composed
+    prompt is the worker's opening message and the worker inherits the terminal,
+    so a human co-authors in the worker's native REPL. Distinct from
+    `worker.invoke` (autonomous, prompt on stdin) used by implement.
+  - `phases/__init__.py` — `base_prompt` factored out (project overlay → packaged
+    default), shared by plan and implement.
+  - `cli.py` — `helix plan <project> [--intent …] [--agree/--draft] [--out …]
+    [--no-worker]` wired to the phase.
+
+  *Done-when, met:* `helix plan` co-authors and (on `--agree`) seals a
+  `PlanState` contract that `helix run` consumes end-to-end (verified directly:
+  plan→implement→judge with the planned intent flowing into the implement prompt
+  and a `pass` verdict); handoff stays clean (fresh context per phase, files as
+  the artifact, chained sessions); the test suite grew from 33 to 43 passing and
+  stays green (lint clean).
 
 - **P3 — Session management & provenance**
   Self-contained sessions, predecessor chaining, age-stamped findings, and the

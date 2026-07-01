@@ -51,3 +51,27 @@ def invoke(
     if proc.stderr:
         parts.append(proc.stderr)
     return "".join(parts)
+
+
+def converse(
+    prompt: str,
+    cwd: Path,
+    *,
+    command: list[str],
+    env: dict[str, str] | None = None,
+) -> int:
+    """Launch the worker interactively with ``prompt`` as its opening message.
+
+    Unlike :func:`invoke`, this hands the worker Helix's own stdin/stdout/stderr
+    so a human is *in the seat* and can converse in the worker's native REPL —
+    the mode the plan phase runs in. The composed prompt is passed as the final
+    argv element (the opening message); ``command`` is the worker's own argv.
+
+    Helix sets the working context and gets out of the way (model-harness fit):
+    it does not steer the worker turn-by-turn and does not reimplement its tools.
+
+    Returns the worker's exit code. Raises ``FileNotFoundError`` if the worker
+    binary is not found.
+    """
+    proc = subprocess.run([*command, prompt], cwd=str(cwd), env=env)
+    return proc.returncode

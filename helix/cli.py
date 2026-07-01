@@ -12,7 +12,9 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from helix.loop import run_loop
+from helix.config import load_config
+from helix.loop import SESSIONS_DIRNAME, run_loop
+from helix.phases import plan as plan_phase
 
 app = typer.Typer(
     name="helix",
@@ -28,10 +30,48 @@ _NOT_YET = "[yellow]not yet implemented[/] — scaffolded target for the bootstr
 @app.command()
 def plan(
     project: str = typer.Argument(..., help="Project directory to plan in."),
+    intent: str = typer.Option(
+        "", help="Starting intent handed to the worker as the opening context."
+    ),
+    agree: bool = typer.Option(
+        False,
+        "--agree/--draft",
+        help="Seal the plan as the signed contract (stamp agreed_at).",
+    ),
+    out: str = typer.Option(
+        "", help="Where to write the plan (default: the project's configured plan)."
+    ),
+    no_worker: bool = typer.Option(
+        False, "--no-worker", help="Scaffold/seal only; do not launch the worker."
+    ),
 ) -> None:
-    """Interactive planning phase: co-author the agreed plan (the signed contract)."""
-    console.print(f"helix plan {project}: {_NOT_YET}")
-    raise typer.Exit(code=1)
+    """Interactive planning phase: co-author the agreed plan (the signed contract).
+
+    Materializes a ``PlanState``-shaped document (deterministic metadata written
+    by the tool; judgment-laden body co-authored by the worker and human) that
+    ``helix run`` consumes unchanged.
+    """
+    root = Path(project)
+    try:
+        config = load_config(root)
+        result = plan_phase.run(
+            config,
+            root,
+            sessions_dir=root / SESSIONS_DIRNAME,
+            intent=intent or None,
+            agree=agree,
+            out=Path(out) if out else None,
+            invoke_worker=not no_worker,
+        )
+    except FileNotFoundError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+
+    state = "agreed" if result.agreed else "draft"
+    style = "green" if result.agreed else "yellow"
+    console.print(
+        f"[{style}]plan {state}[/] -> {result.plan_path} (session {result.id})"
+    )
 
 
 # verdict -> process exit code, so shells and CI can branch on the outcome.

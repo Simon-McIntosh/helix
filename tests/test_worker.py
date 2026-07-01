@@ -7,7 +7,7 @@ the worker's tools. These tests use trivial stand-in commands (cat, sh) as the
 
 import pytest
 
-from helix.worker import invoke
+from helix.worker import converse, invoke
 
 
 def test_invoke_feeds_prompt_on_stdin_and_returns_output(tmp_path):
@@ -30,3 +30,18 @@ def test_invoke_captures_stderr_as_evidence(tmp_path):
 def test_invoke_missing_command_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         invoke("x", cwd=tmp_path, command=["helix-no-such-worker-binary"])
+
+
+def test_converse_passes_prompt_as_opening_argv_and_runs_in_cwd(tmp_path):
+    # The interactive human's-seat entry: prompt handed as the final argv element.
+    rc = converse(
+        "the-opening-message",
+        cwd=tmp_path,
+        command=["sh", "-c", 'printf "%s" "$1" > seen.txt', "x"],
+    )
+    assert rc == 0
+    assert (tmp_path / "seen.txt").read_text() == "the-opening-message"
+
+
+def test_converse_returns_worker_exit_code(tmp_path):
+    assert converse("x", cwd=tmp_path, command=["sh", "-c", "exit 3", "x"]) == 3
