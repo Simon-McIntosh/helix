@@ -83,11 +83,31 @@ stage; later stages are about scaling across projects and years, not capability.
   GitHub remote, first push, markdown plan + reckon lens. Surrogate baseline
   (tests) green.
 
-- **P1 — Phase-separated loop + fresh judge** (the ~80% of value)
-  Implement `loop.py`, `worker.py`, `phases/*`, `oracle.py` (surrogate tier),
-  `state.py`. Prove plan→implement→judge with file handoffs on Helix itself,
-  using Helix's test suite as the fast oracle. Done when an autonomous loop can
-  make a verified increment without a human in the inner loop.
+- **P1 — Phase-separated loop + fresh judge** ✅ *(the ~80% of value)*
+  Shipped. The dumb outer loop drives `implement→judge` iterations that hand off
+  through files, with the surrogate oracle (the test suite) as fast
+  backpressure. No model judgment lives in the loop or the phases — they compose
+  prompts, invoke the native worker, evaluate gates, and persist sessions.
+  - `state.py` — markdown+YAML frontmatter read/write (the handoff substrate).
+  - `config.py` — project run config (worker command, caps, gates) from
+    `helix.yaml`; runtime config, distinct from the durable schema records.
+  - `oracle.py` — tiered gate evaluation reducing to `pass | fail | blocked`;
+    surrogate gates run every iteration, a blocking gate pauses for ground truth.
+  - `worker.py` — native-worker subprocess (composed prompt on stdin; the worker
+    keeps its own tool surface — no reimplementation).
+  - `session.py` — `write_session` persists `Session` records to `sessions/`.
+  - `phases/implement.py` — compose prompt, invoke worker, persist evidence.
+  - `phases/judge.py` — an independent, mechanical oracle verdict (never the
+    worker); the test suite *is* the judge in this tier.
+  - `loop.py` + CLI — `run_loop` halts on `pass | blocked | cap`; `helix run`
+    turns the verdict into an exit code (0 / 2 / 1).
+  - `helix.yaml` — the self-hosting run config (`helix run .`).
+
+  *Done-when, met:* `helix run` drives implement→judge against a task with the
+  test suite as the surrogate oracle and halts on pass/fail/cap; sessions are
+  written to `sessions/` in the schema's record shape and chain through their
+  predecessor; the test suite grew to 33 passing across loop/oracle/state/phases
+  and stays green.
 
 - **P2 — Interactive planning entry + clean session handoff**
   Build the `plan` phase: how a human co-authors a plan and materializes the

@@ -4,20 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="docs-project"   content="helix">
-  <meta name="reckon-type"    content="plan">
-  <meta name="plan-slug"      content="bootstrap">
-  <meta name="plan-title"     content="Helix Bootstrap">
-  <meta name="plan-summary"   content="Scaffold Helix and drive it to self-hosting: a dumb plan-implement-judge loop around a smart native worker.">
-  <meta name="plan-status"    content="active">
-  <meta name="plan-roi"       content="high">
-  <meta name="plan-effort"    content="L">
-  <meta name="plan-tier"      content="opus">
+  <meta name="reckon-type" content="plan">
+  <meta name="plan-slug" content="bootstrap">
+  <meta name="plan-title" content="Helix Bootstrap">
+  <meta name="plan-summary" content="Scaffold Helix and drive it to self-hosting: a dumb plan-implement-judge loop around a smart native worker.">
+  <meta name="plan-status" content="active">
+  <meta name="plan-roi" content="high">
+  <meta name="plan-effort" content="L">
+  <meta name="plan-tier" content="opus">
   <meta name="plan-milestone" content="M1">
-  <meta name="plan-owner"     content="Simon McIntosh">
-  <meta name="plan-impl"      content="0.14">
+  <meta name="plan-owner" content="Simon McIntosh">
+  <meta name="plan-impl" content="0.28">
   <title>Helix Bootstrap | helix</title>
   <link rel="stylesheet" href="/_shared/foundation.css">
   <link rel="stylesheet" href="/_shared/dashboard.css">
+<meta name="plan-modified" content="2026-07-01">
+<meta name="plan-version" content="1">
 </head>
 <body>
   <main class="plan-doc">
@@ -118,10 +120,19 @@
       models, base phase prompts, README/AGENTS/CLAUDE, MIT license, git
       init + public GitHub remote + first push, markdown plan + this reckon lens.
       Surrogate baseline (tests) green.</li>
-      <li><strong>P1 — Phase-separated loop + fresh judge (the ~80% of value).</strong>
-      Build <code>loop.py</code>, <code>worker.py</code>, <code>phases/*</code>,
-      <code>oracle.py</code> (surrogate tier), <code>state.py</code>. Prove
-      plan→implement→judge on Helix itself, with the test suite as the fast oracle.</li>
+      <li><strong>P1 — Phase-separated loop + fresh judge ✅ (shipped — the ~80% of value).</strong>
+      The dumb outer loop drives <code>implement→judge</code> iterations that hand
+      off through files, with the surrogate oracle (the test suite) as fast
+      backpressure and no model judgment in the loop or phases. Built
+      <code>state.py</code>, <code>config.py</code>, <code>oracle.py</code>
+      (tiered → pass/fail/blocked), <code>worker.py</code> (native worker on
+      stdin; no tool reimplementation), <code>session.py</code>
+      <code>write_session</code>, <code>phases/implement.py</code> +
+      <code>phases/judge.py</code> (the judge a separate, mechanical oracle
+      verdict), <code>loop.py</code> + wired <code>helix run</code>, and the
+      self-hosting <code>helix.yaml</code>. Sessions land in <code>sessions/</code>
+      in the schema's <code>Session</code> shape and chain through predecessors;
+      33 tests pass, lint clean.</li>
       <li><strong>P2 — Interactive planning entry + clean session handoff.</strong></li>
       <li><strong>P3 — Session management &amp; provenance.</strong> Chaining,
       age-stamped findings, the <code>status</code> command, chain walking.</li>
@@ -133,41 +144,40 @@
     </ul>
 
     <section data-reckon="decisions" id="decisions" class="r-decisions">
-      <h2><span class="sec">§</span> Decisions</h2>
-      <div class="r-dec" data-key="license" data-choice="MIT" data-by="Simon McIntosh" data-when="2026-06-30">
-        <p class="r-dec-q">What license should Helix carry?</p>
-        <p class="r-dec-rat">MIT — permissive and open. CC BY-ND was considered
+<h2><span class="sec">§</span> Decisions</h2>
+<div class="r-dec" data-key="license" data-choice="MIT" data-by="Simon McIntosh" data-when="2026-06-30">
+    <p class="r-dec-q">What license should Helix carry?</p>
+    <p class="r-dec-rat">MIT — permissive and open. CC BY-ND was considered
         and rejected: NoDerivatives is the wrong fit for code meant to be
         extended. reckon is on MIT too.</p>
-      </div>
-      <div class="r-dec" data-key="layout" data-choice="flat helix/helix/" data-by="Simon McIntosh" data-when="2026-06-30">
-        <p class="r-dec-q">Package layout — src/ or flat repeated-name?</p>
-        <p class="r-dec-rat">Flat <code>helix/helix/</code> to match sibling repos;
+    </div>
+<div class="r-dec" data-key="layout" data-choice="flat helix/helix/" data-by="Simon McIntosh" data-when="2026-06-30">
+    <p class="r-dec-q">Package layout — src/ or flat repeated-name?</p>
+    <p class="r-dec-rat">Flat helix/helix/ to match sibling repos;
         src/ only buys import-isolation we do not need.</p>
-      </div>
-      <div class="r-dec" data-key="schema" data-choice="LinkML → generated pydantic" data-by="Simon McIntosh" data-when="2026-06-30">
-        <p class="r-dec-q">How are state record types defined?</p>
-        <p class="r-dec-rat">LinkML (<code>schema/helix.yaml</code>) is the single
-        source of truth; pydantic v2 models generated via <code>gen-pydantic</code>
-        into <code>helix/models.py</code> (not hand-edited).</p>
-      </div>
-      <div class="r-dec" data-key="plan-substrate" data-choice="markdown truth + reckon lens" data-by="Simon McIntosh" data-when="2026-06-30">
-        <p class="r-dec-q">How is the plan tracked?</p>
-        <p class="r-dec-rat">Markdown design doc is the source of truth; this
+    </div>
+<div class="r-dec" data-key="schema" data-choice="LinkML → generated pydantic" data-by="Simon McIntosh" data-when="2026-06-30">
+    <p class="r-dec-q">How are state record types defined?</p>
+    <p class="r-dec-rat">LinkML ( schema/helix.yaml ) is the single
+        source of truth; pydantic v2 models generated via gen-pydantic into helix/models.py (not hand-edited).</p>
+    </div>
+<div class="r-dec" data-key="plan-substrate" data-choice="markdown truth + reckon lens" data-by="Simon McIntosh" data-when="2026-06-30">
+    <p class="r-dec-q">How is the plan tracked?</p>
+    <p class="r-dec-rat">Markdown design doc is the source of truth; this
         reckon HTML plan is the rendered lens. Helix core imports nothing from
         reckon.</p>
-      </div>
-    </section>
+    </div>
+</section>
 
     <section data-reckon="followups" id="followups" class="r-followups">
-      <h2><span class="sec">§</span> Followups</h2>
-      <article class="r-fu" data-id="f-helix-p1" data-status="open" data-tier="opus" data-written-by="reckon-create" data-written-at="2026-06-30">
-        <h4 class="r-fu-title">P1 — Build the phase-separated loop with a fresh judge</h4>
-        <div class="r-fu-body">The ~80%-value core. Implement the dumb outer loop
+<h2><span class="sec">§</span> Followups</h2>
+<article class="r-fu" data-id="f-helix-p1" data-status="resolved" data-tier="opus" data-written-by="reckon-create" data-written-at="2026-06-30" data-recommends-skill="" data-resolved-at="2026-07-01T06:26:05+00:00" data-resolved-by="claude">
+    <h4 class="r-fu-title">P1 — Build the phase-separated loop with a fresh judge</h4>
+    <div class="r-fu-body">The ~80%-value core. Implement the dumb outer loop
         and its phase invocations so an autonomous run can make a verified
         increment on Helix itself, with the test suite as the surrogate oracle.
         This is the step that makes Helix real enough to start self-hosting.</div>
-        <pre class="r-fu-prompt">Project: helix
+    <pre class="r-fu-prompt">Project: helix
 Plan:    bootstrap (http://localhost:8765/helix/bootstrap.html)
 Section: §4 P1
 Tier:    opus
@@ -185,7 +195,7 @@ State to read  (code/files, not the plan)
   docs/specs/2026-06-30-helix-bootstrap-design.md (the design source of truth)
 
 Scope locks / constraints (non-decision)
-  - Never reimplement/wrap the native worker's tool surface; worker.py only
+  - Never reimplement/wrap the native worker&#x27;s tool surface; worker.py only
     sets context and invokes a fresh worker process.
   - No model judgment in the loop or phases — compose prompts, invoke, run the
     oracle, persist state.
@@ -196,11 +206,50 @@ Scope locks / constraints (non-decision)
 Done-when
   1. `helix run` drives implement→judge against a small task with the test
      suite as the surrogate oracle, halting on pass / fail / cap.
-  2. Sessions are written to sessions/ with the schema's record shape.
+  2. Sessions are written to sessions/ with the schema&#x27;s record shape.
   3. Tests still green (and grow to cover loop/oracle/state).
   4. Followup written into plan + this followup marked resolved.</pre>
-      </article>
-    </section>
+    <p class="r-fu-outcome">Shipped in commit <code>c5174ba</code>. The dumb outer loop drives <code>implement→judge</code> iterations that hand off through files, with the surrogate oracle (the test suite) as fast backpressure and <strong>no model judgment in the loop or phases</strong>. Built <code>state.py</code> (markdown+frontmatter substrate), <code>config.py</code> (project run config), <code>oracle.py</code> (tiered gate evaluation → pass/fail/blocked), <code>worker.py</code> (native-worker subprocess; prompt on stdin, no tool reimplementation), <code>session.py</code> <code>write_session</code>, <code>phases/implement.py</code> and <code>phases/judge.py</code> (the judge an independent, mechanical oracle verdict — never the worker), <code>loop.py</code> + wired <code>helix run</code>, and the self-hosting <code>helix.yaml</code>. <strong>Done-when met:</strong> <code>helix run</code> drives implement→judge and halts on pass/fail/cap; sessions are written to <code>sessions/</code> in the schema's <code>Session</code> record shape and chain through their predecessor; the test suite grew to 33 passing across loop/oracle/state/phases and stays green (lint clean).</p>
+    </article>
+<article class="r-fu" data-id="f-helix-p2" data-status="open" data-tier="opus" data-written-by="claude" data-written-at="2026-07-01" data-recommends-skill="/reckon-ship bootstrap §4 P2" data-resolved-at="" data-resolved-by="">
+    <h4 class="r-fu-title">P2 — Interactive planning entry + clean session handoff</h4>
+    <div class="r-fu-body">With the autonomous loop real (P1 shipped), build the <strong>plan</strong> phase: how a human co-authors a plan and materializes the contract the loop consumes. The tool writes deterministic metadata (the <code>PlanState</code> record); the worker/human writes the judgment-laden content. Close the loop so a planned contract flows straight into <code>helix run</code>.</div>
+    <pre class="r-fu-prompt">Project: helix
+Plan:    bootstrap (http://localhost:8765/helix/bootstrap.html)
+Section: §4 P2
+Tier:    opus
+
+Context
+  P1 shipped the phase-separated loop with a fresh oracle judge: helix run drives
+  implement-&gt;judge against a project&#x27;s helix.yaml, with the test suite as the
+  surrogate oracle, writing chained Session records to sessions/. P2 builds the
+  human&#x27;s seat — the interactive plan phase that produces the signed contract the
+  loop consumes.
+  (Honour the locked / surface the open decisions shown live above — don&#x27;t re-list.)
+
+State to read  (code/files, not the plan URL)
+  helix/phases/plan.py (currently a P2 stub)
+  helix/config.py (Config shape), helix/state.py (frontmatter substrate)
+  helix/models.py + schema/helix.yaml (the PlanState record type)
+  helix/phases/implement.py (how the plan is composed into the implement prompt)
+  prompts/plan.md (base plan-phase contract)
+  helix.yaml (how a run points at its plan)
+
+Scope locks / constraints (non-decision)
+  - The tool writes deterministic metadata (PlanState frontmatter via state.py);
+    the worker/human writes judgment-laden prose. No model judgment in the tool.
+  - Markdown+frontmatter is the source of truth; the reckon HTML is a lens.
+  - Keep the core project-agnostic; domain knowledge stays in project overlays.
+  - The produced plan must be consumable by helix run with no manual reshaping.
+
+Done-when
+  1. helix plan materializes a PlanState-shaped agreed plan on disk that
+     helix run consumes end-to-end (plan -&gt; implement -&gt; judge).
+  2. Sessions/handoff stay clean: fresh context per phase, files as the handoff.
+  3. Tests still green and grow to cover the plan phase.
+  4. Followup written into plan + this followup marked resolved.</pre>
+    </article>
+</section>
 
   </main>
 </body>
