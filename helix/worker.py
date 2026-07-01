@@ -15,12 +15,39 @@ worker turn-by-turn.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 
-def invoke(prompt: str, cwd: Path, *, timeout_s: int | None = None) -> str:
+def invoke(
+    prompt: str,
+    cwd: Path,
+    *,
+    command: list[str],
+    timeout_s: int | None = None,
+    env: dict[str, str] | None = None,
+) -> str:
     """Run the native worker once with ``prompt`` in ``cwd`` and return its output.
 
-    Raises ``NotImplementedError`` until the adapter is built (bootstrap phase P1).
+    The composed prompt is fed to the worker on **stdin**; ``command`` is the
+    worker's own argv. Helix does not steer the worker turn-by-turn and does not
+    reimplement its tools — it starts a fresh process, hands it context, and
+    captures what it produces.
+
+    Returns the worker's stdout with any stderr appended, so the full trace is
+    preserved as evidence. Raises ``FileNotFoundError`` if the worker binary is
+    not found, and ``subprocess.TimeoutExpired`` if it exceeds ``timeout_s``.
     """
-    raise NotImplementedError("worker adapter is a bootstrap target (P1)")
+    proc = subprocess.run(
+        command,
+        cwd=str(cwd),
+        input=prompt,
+        capture_output=True,
+        text=True,
+        timeout=timeout_s,
+        env=env,
+    )
+    parts = [proc.stdout or ""]
+    if proc.stderr:
+        parts.append(proc.stderr)
+    return "".join(parts)

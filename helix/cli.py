@@ -7,8 +7,12 @@ inputs from files, invokes the worker, and writes state back to disk.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 from rich.console import Console
+
+from helix.loop import run_loop
 
 app = typer.Typer(
     name="helix",
@@ -30,6 +34,11 @@ def plan(
     raise typer.Exit(code=1)
 
 
+# verdict -> process exit code, so shells and CI can branch on the outcome.
+_EXIT_CODE = {"pass": 0, "blocked": 2}
+_VERDICT_STYLE = {"pass": "green", "blocked": "yellow"}
+
+
 @app.command()
 def run(
     project: str = typer.Argument(..., help="Project directory to run the loop in."),
@@ -38,8 +47,13 @@ def run(
     ),
 ) -> None:
     """Autonomous loop: iterate implement->judge until the oracle is satisfied."""
-    console.print(f"helix run {project} (max={max_iterations}): {_NOT_YET}")
-    raise typer.Exit(code=1)
+    result = run_loop(Path(project), max_iterations or None)
+    style = _VERDICT_STYLE.get(result.verdict, "red")
+    console.print(
+        f"[{style}]{result.verdict}[/] after {result.iterations} iteration(s) "
+        f"— {len(result.sessions)} session(s) written"
+    )
+    raise typer.Exit(code=_EXIT_CODE.get(result.verdict, 1))
 
 
 @app.command()

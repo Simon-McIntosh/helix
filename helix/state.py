@@ -12,18 +12,34 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+
+_DELIM = "---"
+
 
 def read_doc(path: Path) -> tuple[dict, str]:
     """Read a markdown doc, returning ``(frontmatter, body)``.
 
-    Raises ``NotImplementedError`` until the substrate is built (bootstrap P1).
+    A leading ``---`` fenced block is parsed as YAML frontmatter; everything
+    after the closing fence is the body. A ``---`` inside the body (a horizontal
+    rule) is left untouched. A document with no frontmatter returns ``({}, text)``.
     """
-    raise NotImplementedError("state substrate is a bootstrap target (P1)")
+    text = Path(path).read_text()
+    if text.startswith(_DELIM + "\n") or text.startswith(_DELIM + "\r\n"):
+        # Split into ['', <frontmatter>, <body>] — maxsplit keeps body intact.
+        _, fenced, body = text.split(_DELIM, 2)
+        frontmatter = yaml.safe_load(fenced) or {}
+        return frontmatter, body.lstrip("\n")
+    return {}, text
 
 
 def write_doc(path: Path, frontmatter: dict, body: str) -> None:
     """Write ``frontmatter`` + ``body`` to ``path`` as markdown with YAML frontmatter.
 
-    Raises ``NotImplementedError`` until the substrate is built (bootstrap P1).
+    Parent directories are created as needed. Keys are emitted in insertion order
+    (not sorted) so the human-facing record reads in a stable, meaningful order.
     """
-    raise NotImplementedError("state substrate is a bootstrap target (P1)")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fenced = yaml.safe_dump(frontmatter, sort_keys=False).strip()
+    path.write_text(f"{_DELIM}\n{fenced}\n{_DELIM}\n\n{body.rstrip()}\n")
