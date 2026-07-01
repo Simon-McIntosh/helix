@@ -24,6 +24,16 @@
 <body>
   <main class="plan-doc">
 
+    <section aria-label="Status and next steps" style="margin:0 0 1.75rem;padding:1rem 1.25rem;border:1px solid #d0d7de;border-left:4px solid #2563eb;border-radius:6px;background:#f8fafc;">
+      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 2 of 7 phases shipped (impl ≈ 0.28)</p>
+      <ul style="margin:.25rem 0 .75rem;padding-left:1.25rem;color:#1a1a1a;">
+        <li><strong>P0 — Scaffold &amp; init</strong> ✅ shipped.</li>
+        <li><strong>P1 — Phase-separated loop + fresh judge</strong> ✅ shipped — the dumb outer loop runs <code>implement→judge</code> with the test suite as the surrogate oracle; <code>helix run</code> works end-to-end, sessions chain in <code>sessions/</code>, 33 tests green.</li>
+        <li><strong>P2 — Interactive planning entry</strong> ⟵ <strong>next</strong>: build the <code>plan</code> phase so a human co-authors the contract the loop consumes (see the open followup in the Followups panel).</li>
+      </ul>
+      <p style="margin:0;color:#1a1a1a;">Full design &amp; roadmap: <a href="https://github.com/Simon-McIntosh/helix/blob/main/docs/specs/2026-06-30-helix-bootstrap-design.md">the bootstrap design markdown</a> — the source of truth. This page is the rendered lens over it.</p>
+    </section>
+
     <h2 id="s1">§1 — What we are building</h2>
     <p><strong>Helix</strong> is a long-horizon agent orchestrator: a
     <em>dumb</em> outer loop with three disciplined phases — <strong>plan,
@@ -33,8 +43,10 @@
     persists state. The durable record — plain-text artifacts plus git history —
     is the asset, not any single agent session.</p>
     <p>The markdown source of truth for this design lives at
-    <code>docs/specs/2026-06-30-helix-bootstrap-design.md</code>. This page is
-    the rendered human lens over it; the markdown wins on any disagreement.</p>
+    <a href="https://github.com/Simon-McIntosh/helix/blob/main/docs/specs/2026-06-30-helix-bootstrap-design.md"><code>docs/specs/2026-06-30-helix-bootstrap-design.md</code></a>
+    (also served raw at <code>/helix/specs/2026-06-30-helix-bootstrap-design.md</code>).
+    This page is the rendered human lens over it; the markdown wins on any
+    disagreement.</p>
 
     <h2 id="s2">§2 — The loop</h2>
     <figure style="margin:1.5rem 0;">
