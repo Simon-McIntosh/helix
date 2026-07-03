@@ -12,6 +12,7 @@ holds no model judgment: it decides nothing about whether the work is done.
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -94,14 +95,32 @@ def run(
     session_id, session_dir = session.prepare_session(sessions_dir, slug=slug, now=now)
     (session_dir / "evidence" / "prompt.txt").write_text(prompt)
 
-    invoked = worker.invoke(
-        prompt,
-        cwd=repo,
-        command=command or config.worker.command,
-        timeout_s=config.worker.timeout_s,
-        sink=session_dir / "evidence" / "worker.txt",
-        on_line=observer,
-    )
+    try:
+        invoked = worker.invoke(
+            prompt,
+            cwd=repo,
+            command=command or config.worker.command,
+            timeout_s=config.worker.timeout_s,
+            sink=session_dir / "evidence" / "worker.txt",
+            on_line=observer,
+        )
+    except subprocess.TimeoutExpired:
+        # Persist the cut session before propagating — the streamed evidence is
+        # already on disk and must stay discoverable in the chain.
+        session.write_record(
+            session_dir,
+            id=session_id,
+            phase="implement",
+            created_at=now,
+            predecessor=predecessor,
+            summary=f"Worker cut by timeout after {config.worker.timeout_s}s.",
+            body=(
+                "# implement session\n\nThe worker exceeded its wall-clock cap "
+                "and was cut. Partial trace in `evidence/worker.txt`; the run "
+                "is resumable with the worker's continue flag."
+            ),
+        )
+        raise
     output = invoked.output
 
     summary = (

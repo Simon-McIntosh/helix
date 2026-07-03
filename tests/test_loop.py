@@ -220,3 +220,10 @@ def test_loop_halts_interrupted_on_worker_timeout(tmp_path):
 
     assert result.verdict == "interrupted"
     assert "timeout" in (result.reason or "")
+    # The cut session's record was still persisted, so its streamed evidence
+    # stays discoverable in the chain.
+    from helix.session import iter_sessions
+
+    views = iter_sessions(project / "sessions")
+    assert len(views) == 1
+    assert "timeout" in (views[0].summary or "")
