@@ -24,6 +24,7 @@ native continue flag so the cut conversation picks up where it stopped.
 
 from __future__ import annotations
 
+import subprocess
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -136,15 +137,23 @@ def run_loop(
         )
         if announce is not None:
             announce(f"iteration {i + 1}/{cap} — implement")
-        impl = implement.run(
-            config,
-            project,
-            sessions_dir=sessions_dir,
-            slug=f"{i:02d}-implement",
-            predecessor=last_id,
-            observer=observer,
-            command=command,
-        )
+        try:
+            impl = implement.run(
+                config,
+                project,
+                sessions_dir=sessions_dir,
+                slug=f"{i:02d}-implement",
+                predecessor=last_id,
+                observer=observer,
+                command=command,
+            )
+        except subprocess.TimeoutExpired:
+            # The worker overran its wall-clock cap — same halt as any other
+            # cut: resumable, never judged.
+            reason = f"worker timeout after {config.worker.timeout_s}s"
+            return LoopResult(INTERRUPTED, i + 1, sessions, reason=reason)
+        except KeyboardInterrupt:
+            return LoopResult(INTERRUPTED, i + 1, sessions, reason="interrupted (^C)")
         last_id = impl.id
         sessions.append(impl.id)
 

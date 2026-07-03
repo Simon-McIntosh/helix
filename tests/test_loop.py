@@ -208,3 +208,15 @@ def test_loop_reports_progress_snapshots(tmp_path):
     assert snap.tasks_done_start == 0
     assert snap.iteration == 1 and snap.cap == 5
     assert snap.elapsed_s >= 0
+
+
+def test_loop_halts_interrupted_on_worker_timeout(tmp_path):
+    project = _project(tmp_path, ["sh", "-c", "sleep 5"], _DONE_GATE)
+    config = yaml.safe_load((project / "helix.yaml").read_text())
+    config["worker"]["timeout_s"] = 1
+    (project / "helix.yaml").write_text(yaml.safe_dump(config))
+
+    result = run_loop(project)
+
+    assert result.verdict == "interrupted"
+    assert "timeout" in (result.reason or "")
