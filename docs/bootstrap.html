@@ -18,8 +18,8 @@
   <title>Helix Bootstrap | helix</title>
   <link rel="stylesheet" href="/_shared/foundation.css">
   <link rel="stylesheet" href="/_shared/dashboard.css">
-<meta name="plan-modified" content="2026-07-01">
-<meta name="plan-version" content="4">
+<meta name="plan-modified" content="2026-07-03">
+<meta name="plan-version" content="5">
 </head>
 <body>
   <main class="plan-doc">
@@ -171,7 +171,17 @@
       <code>helix watch</code> replays it. Verified with a real <code>claude</code>
       worker to a <code>pass</code>; 65 tests green.</li>
       <li><strong>P4 — Project-agnostic core split + anti-drift check.</strong></li>
-      <li><strong>P5 — Human lens.</strong> On-demand HTML rendering via reckon and
+      <li><strong>P5 — Drive &amp; feedback (Ralph-loop usability).</strong>
+      Designed initially around a Claude Code worker; every signal mechanical.
+      Plan tasks as markdown checkboxes (machine-countable, per-task
+      <code>(model: …)</code> annotations); model routing (CLI override → task
+      annotation → <code>helix.yaml</code>); rich run feedback (task progress
+      bar, iteration, elapsed, mechanical ETA); token-limit robustness — the
+      loop halts <code>interrupted</code> (exit 3) and <code>helix run -c</code>
+      resumes from the run dir with the worker's native continue flag; a
+      stdlib-only haiku smoke example for tmp-space iteration before
+      dogfooding.</li>
+      <li><strong>P6 — Human lens.</strong> On-demand HTML rendering via reckon and
       chain-walking review tools.</li>
       <li><strong>Milestone — self-hosting.</strong> Helix drives its own
       development through its own loop — the honest signal the harness is real.</li>
@@ -359,6 +369,49 @@ Done-when
   2. An anti-drift check flags an overlay that forks a core contract (e.g. a
      prompt/gate/schema divergence) rather than extending it.
   3. Tests still green and grow to cover the overlay resolution + drift check.
+  4. Followup written into plan + this followup marked resolved.</pre>
+    </article>
+<article class="r-fu" data-id="f-helix-p5-drive" data-status="open" data-tier="opus" data-written-by="claude" data-written-at="2026-07-03" data-recommends-skill="/reckon-ship bootstrap §4 P5" data-resolved-at="" data-resolved-by="">
+    <h4 class="r-fu-title">P5 — Drive &amp; feedback: rich progress, model routing, resumable runs</h4>
+    <div class="r-fu-body">Make the loop pleasant and robust to <em>drive</em>, designed initially around a Claude Code worker, with every signal mechanical: checkbox plan tasks with per-task <code>(model: …)</code> annotations, model routing (CLI override → task annotation → <code>helix.yaml</code>), a live progress bar with tasks done/remaining + mechanical ETA, token-limit robustness with an <code>interrupted</code> halt and <code>helix run -c</code> resume, and a stdlib-only haiku smoke example for tmp-space iteration before dogfooding.</div>
+    <pre class="r-fu-prompt">Project: helix
+Plan:    bootstrap (http://localhost:8765/helix/bootstrap.html)
+Section: §4 P5
+Tier:    opus
+
+Context
+  P0-P3 shipped the full plan-&gt;implement-&gt;judge loop with provenance and live
+  observability. P5 makes the loop drivable day-to-day around a Claude Code
+  worker: machine-countable plan tasks, model routing, rich progress feedback,
+  and token-limit-robust resumable runs. The tool stays dumb — every new
+  signal is mechanical (checkbox counts, argv composition, string/event
+  classification, arithmetic ETA).
+
+State to read  (code/files, not the plan URL)
+  helix/tasks.py (checkbox/model-annotation parsing)
+  helix/config.py (WorkerConfig: model, model_flag, resume_args)
+  helix/worker.py (build_command; invoke returns output + returncode)
+  helix/loop.py (interrupted verdict, resume, progress callback)
+  helix/progress.py (snapshot arithmetic), helix/cli.py (run --model/-c, bar)
+  examples/ (the stdlib-only smoke project)
+
+Scope locks / constraints (non-decision)
+  - No model judgment in the loop: classification is mechanical (stream-json
+    result events / known limit strings), ETA is arithmetic.
+  - Fresh context per phase stands; -c resume continues an interrupted
+    invocation, it never threads conversation between phases.
+  - Markdown+frontmatter is the source of truth; checkboxes live in the plan
+    body the worker already edits.
+  - Keep the core project-agnostic; Claude Code specifics stay worker data
+    (model_flag/resume_args in helix.yaml).
+
+Done-when
+  1. helix run renders task progress (done/total bar, iteration, elapsed,
+     mechanical ETA) and routes the worker model per CLI/task/config.
+  2. A limit-hit or cut worker halts the loop resumably: exit 3, and
+     helix run -c continues the campaign from the run dir.
+  3. The haiku smoke example drives end-to-end in a tmp dir with a real
+     worker; tests still green and grow to cover tasks/progress/resume.
   4. Followup written into plan + this followup marked resolved.</pre>
     </article>
 </section>

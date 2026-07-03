@@ -172,7 +172,32 @@ stage; later stages are about scaling across projects and years, not capability.
   Formalize core vs overlay; per-project data as small diffs; a check that
   guards overlays from forking core contracts.
 
-- **P5 — Human lens**
+- **P5 — Drive & feedback (Ralph-loop usability)**
+  Make the loop pleasant and robust to *drive*, designed initially around a
+  Claude Code worker. The tool stays dumb — every signal below is mechanical.
+  - **Plan tasks are machine-countable.** The Tasks section of the agreed plan
+    uses markdown checkboxes (`- [ ]` / `- [x]`); the worker checks tasks off
+    as part of updating progress state. A task may carry a per-step model
+    annotation, e.g. `- [ ] Build the parser (model: haiku)`.
+  - **Model routing.** The worker model resolves as: CLI `--model` override →
+    the next open task's `(model: …)` annotation → the project's
+    `helix.yaml` worker model → the worker's own default. The flag name used
+    to pass it is worker data (`model_flag`, default `--model`).
+  - **Rich run feedback.** `helix run` renders a live progress snapshot after
+    each iteration: tasks done vs remaining as a bar, iteration/cap, elapsed,
+    and a mechanical ETA (average time per completed task × tasks remaining).
+  - **Token-limit robustness.** The loop mechanically classifies the worker
+    trace (stream-json result event / known limit messages). A cut-off or
+    limit-hit worker halts the loop with verdict `interrupted` (exit code 3)
+    and a printed resume line; `helix run -c` from the run dir resumes the
+    campaign — the chain on disk is the state, and the first resumed worker
+    invocation gets the worker's native continue flag (`--continue` for
+    Claude Code) so the interrupted conversation picks up where it was cut.
+  - **A smoke example.** A stdlib-only example project (haiku-tier worker,
+    checkbox plan, unittest gate) that copies into a tmp dir for end-to-end
+    iteration before dogfooding on Helix itself.
+
+- **P6 — Human lens**
   On-demand HTML rendering via reckon and chain-walking tools for reviewing
   campaigns over time. reckon is composed, never absorbed.
 
