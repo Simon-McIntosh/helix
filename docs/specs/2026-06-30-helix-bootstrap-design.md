@@ -168,9 +168,19 @@ stage; later stages are about scaling across projects and years, not capability.
   `tail -f`-able. Findings persist as age-/condition-stamped `Finding` records.
   The test suite grew from 43 to 65 passing and stays green (lint clean).
 
-- **P4 — Project-agnostic core split + anti-drift check**
-  Formalize core vs overlay; per-project data as small diffs; a check that
-  guards overlays from forking core contracts.
+- **P4 — Project-agnostic core split + anti-drift check** ✅
+  Shipped 2026-07-03. The boundary is formalized and machine-guarded:
+  `helix/overlay.py:resolve_prompt` composes the packaged core contract plus an
+  appended `<project>/prompts/overlay.<phase>.md` (extensions extend, never
+  replace; `base_prompt` delegates to it), and `check_project` — wired as
+  `helix check` — mechanically flags a full `prompts/<phase>.md` replacement
+  (fork), restated core headings, an overlay larger than the core, duplicate or
+  command-less surrogate gates, and a missing plan/config. Self-hosting is the
+  sanctioned identity case: the repo's own `prompts/` resolve to the core files.
+  `helix check .` and `helix check examples/greeter` both report clean; the
+  suite grew 99 → 109 tests, green, lint clean. `projects/README.md` documents
+  the overlay layout (overlays live in the project run dir; gates in
+  `helix.yaml`).
 
 - **P5 — Drive & feedback (Ralph-loop usability)** ✅
   Shipped 2026-07-03. The loop is pleasant and robust to *drive*, designed

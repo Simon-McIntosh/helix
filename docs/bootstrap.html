@@ -14,27 +14,27 @@
   <meta name="plan-tier" content="opus">
   <meta name="plan-milestone" content="M1">
   <meta name="plan-owner" content="Simon McIntosh">
-  <meta name="plan-impl" content="0.63">
+  <meta name="plan-impl" content="0.75">
   <title>Helix Bootstrap | helix</title>
   <link rel="stylesheet" href="/_shared/foundation.css">
   <link rel="stylesheet" href="/_shared/dashboard.css">
 <meta name="plan-modified" content="2026-07-03">
-<meta name="plan-version" content="6">
+<meta name="plan-version" content="7">
 </head>
 <body>
   <main class="plan-doc">
 
     <section aria-label="Status and next steps" style="margin:0 0 1.75rem;padding:1rem 1.25rem;border:1px solid #d0d7de;border-left:4px solid #2563eb;border-radius:6px;background:#f8fafc;">
-      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 5 of 8 phases shipped (impl ≈ 0.63)</p>
+      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 6 of 8 phases shipped (impl ≈ 0.75)</p>
       <ul style="margin:.25rem 0 .75rem;padding-left:1.25rem;color:#1a1a1a;">
         <li><strong>P0 — Scaffold &amp; init</strong> ✅ shipped.</li>
         <li><strong>P1 — Phase-separated loop + fresh judge</strong> ✅ shipped — the dumb outer loop runs <code>implement→judge</code> with the test suite as the surrogate oracle; <code>helix run</code> works end-to-end.</li>
         <li><strong>P2 — Interactive planning entry</strong> ✅ shipped — the <code>plan</code> phase is the human's seat: <code>helix plan</code> co-authors a <code>PlanState</code> contract that <code>helix run</code> consumes unchanged.</li>
         <li><strong>P3 — Session management &amp; provenance + observability</strong> ✅ shipped — <code>helix status</code> walks the predecessor chain; findings persist as age-/condition-stamped <code>Finding</code> records; and a running worker is now <em>watchable from outside</em> — <code>helix run --stream</code> renders the live train-of-thought, <code>tail -f</code> follows the raw stream-json, <code>helix watch</code> replays a trace. Verified with a real <code>claude</code> worker to a <code>pass</code>; 65 tests green.</li>
         <li><strong>P5 — Drive &amp; feedback</strong> ✅ shipped — checkbox plan tasks (+ per-step <code>(model: …)</code>), model routing, live task-progress bar with mechanical ETA, and resumable runs: a token-limit/timeout/^C cut exits 3 and <code>helix run -c</code> continues where it stopped. Verified end-to-end with a real haiku worker; 99 tests green. Record: <a href="archive/bootstrap-drive-feedback-landed.html">landed</a>.</li>
-        <li><strong>P4 — Project-agnostic core split + anti-drift check</strong> ⟵ <strong>next</strong>: formalize core vs overlay and add a check that guards overlays from forking core contracts (see the open followup in the Followups panel).</li>
+        <li><strong>P4 — Core/overlay split + anti-drift check</strong> ✅ shipped — overlays are appended data diffs (<code>prompts/overlay.&lt;phase&gt;.md</code>), never replacements; <code>helix check</code> guards the boundary mechanically. 109 tests green. Record: <a href="archive/bootstrap-core-overlay-landed.html">landed</a>.</li>
       </ul>
-      <p style="margin:0 0 .5rem;color:#1a1a1a;"><strong>Handoff for the next session:</strong> the loop is now drivable day-to-day: seal a checkbox plan, <code>helix run</code> with the live view and progress line, resume any cut run with <code>-c</code>, and iterate on <code>examples/greeter/</code> in a tmp dir. P4 (core/overlay + anti-drift) is the open stage; supervised dogfooding on Helix itself is unblocked.</p>
+      <p style="margin:0 0 .5rem;color:#1a1a1a;"><strong>Handoff for the next session:</strong> the loop is drivable day-to-day — seal a checkbox plan, <code>helix run</code> with the live view and progress line, resume any cut run with <code>-c</code>, audit a project with <code>helix check</code>, iterate on <code>examples/greeter/</code> in a tmp dir. Only P6 (human lens) remains before the self-hosting milestone; <strong>supervised dogfooding on Helix itself is the recommended next move</strong>.</p>
       <p style="margin:0;color:#1a1a1a;">Full design &amp; roadmap: <a href="https://github.com/Simon-McIntosh/helix/blob/main/docs/specs/2026-06-30-helix-bootstrap-design.md">the bootstrap design markdown</a> — the source of truth. This page is the rendered lens over it.</p>
     </section>
 
@@ -171,7 +171,16 @@
       train-of-thought, <code>helix run --stream</code> shows it live, and
       <code>helix watch</code> replays it. Verified with a real <code>claude</code>
       worker to a <code>pass</code>; 65 tests green.</li>
-      <li><strong>P4 — Project-agnostic core split + anti-drift check.</strong></li>
+      <li><strong>P4 — Project-agnostic core split + anti-drift check.</strong>
+      <span class="badge badge-shipped">✓ landed 2026-07-03</span>
+      Shipped: <code>helix/overlay.py</code> resolves core contract + appended
+      <code>prompts/overlay.&lt;phase&gt;.md</code> (extensions extend, never
+      replace; self-hosting identity sanctioned); <code>helix check</code>
+      flags forks, restated headings, oversized overlays, and gate/config
+      problems. <code>helix check .</code> and the greeter example both clean;
+      tests 99 → 109 green (commit <code>43074e8</code>). Full record:
+      <a href="archive/bootstrap-core-overlay-landed.html">core/overlay
+      landed</a>.</li>
       <li><strong>P5 — Drive &amp; feedback (Ralph-loop usability).</strong>
       <span class="badge badge-shipped">✓ landed 2026-07-03</span>
       Shipped: checkbox plan tasks with per-step <code>(model: …)</code>
@@ -337,7 +346,7 @@ Done-when
   4. Followup written into plan + this followup marked resolved.</pre>
     <p class="r-fu-outcome">Shipped in commit <code>926a396</code>, with <strong>rich observability</strong> folded in. Sessions already chained on disk (P1); P3 makes provenance first-class and makes a running worker <em>watchable from outside</em>. Built: <code>session.py</code> <code>walk_chain</code> (follows the <code>predecessor</code> links into one coherent campaign thread), <code>iter_sessions</code>, and <code>record_findings</code>/<code>read_findings</code> (schema <code>Finding</code> records, age-(<code>observed_at</code>)/condition-stamped), plus a <code>prepare_session</code>/<code>write_record</code> split so evidence streams before the record is finalized; <code>worker.invoke</code> now streams stdout line-by-line to a <code>sink</code> file (so <code>tail -f</code> follows it during a run) and an <code>on_line</code> callback, with a threaded stdin feed (no pipe deadlock) and a timer timeout; <code>observe.py</code> is a projection (never steers, never reimplements tools) that renders a Claude Code <code>stream-json</code> trace as a train-of-thought (init header, assistant text, dimmed thinking, tool actions with a summary, tool results with ok/err+size, and a done footer with turns/cost/duration), Rich-escaped, with plain-text workers passing through; <code>judge.py</code> persists findings as <code>Finding</code> records; <code>cli.py</code> gained <code>helix status</code> (read-only: chain, verdicts, gates, recent findings), <code>helix watch</code> (replay a session trace), and <code>helix run --stream</code> (live train-of-thought); <code>helix.yaml</code> worker now emits <code>--output-format stream-json --verbose</code>. <strong>Done-when met, verified with a real <code>claude</code> worker:</strong> <code>helix run</code> streamed its train-of-thought and actions live (init, then Bash/Write actions, reasoning, and a done footer) to a <code>pass</code> verdict; <code>helix status</code>/<code>helix watch</code> render the chain and trace; the raw trace is newline-delimited JSON and <code>tail -f</code>-able; findings persist as age-/condition-stamped <code>Finding</code> records. The test suite grew from 43 to 65 passing and stays green (lint clean).</p>
     </article>
-<article class="r-fu" data-id="f-helix-p4" data-status="open" data-tier="opus" data-written-by="claude" data-written-at="2026-07-01" data-recommends-skill="/reckon-ship bootstrap §4 P4" data-resolved-at="" data-resolved-by="">
+<article class="r-fu" data-id="f-helix-p4" data-status="resolved" data-tier="opus" data-written-by="claude" data-written-at="2026-07-01" data-recommends-skill="/reckon-ship bootstrap §4 P4" data-resolved-at="2026-07-03T15:23:10+00:00" data-resolved-by="reckon-ship">
     <h4 class="r-fu-title">P4 — Project-agnostic core split + anti-drift check</h4>
     <div class="r-fu-body">With the full loop and observability shipped (P3), formalize the <strong>core vs overlay</strong> boundary: per-project data lives as small diffs in <code>projects/&lt;name&gt;/</code> (glossary, gate definitions, spec, prompt extensions), and a machine check guards overlays from forking core contracts. Drift between projects is the chief long-term risk and must be designed against.</div>
     <pre class="r-fu-prompt">Project: helix
@@ -373,6 +382,7 @@ Done-when
      prompt/gate/schema divergence) rather than extending it.
   3. Tests still green and grow to cover the overlay resolution + drift check.
   4. Followup written into plan + this followup marked resolved.</pre>
+    <p class="r-fu-outcome">Shipped 2026-07-03 in commit <code>43074e8</code>. The core-vs-overlay boundary is formalized and machine-guarded: <code>helix/overlay.py</code> <code>resolve_prompt</code> composes the packaged core contract + an appended <code>&lt;project&gt;/prompts/overlay.&lt;phase&gt;.md</code> (extensions extend, never replace; <code>base_prompt</code> now delegates to it), and <code>check_project</code> — wired as <code>helix check</code> (exit 0 clean / 1 drift) — mechanically flags a full <code>prompts/&lt;phase&gt;.md</code> replacement (fork), restated core headings, an overlay larger than the core, duplicate or command-less surrogate gates, and a missing plan/config. Self-hosting is the sanctioned identity case (the repo's own <code>prompts/</code> resolve to the core files — no flag). <strong>Done-when met:</strong> overlay = small documented data diff (<code>projects/README.md</code> rewritten: overlays live in the project run dir, gates in <code>helix.yaml</code>); the anti-drift check flags forks rather than extensions; <code>helix check .</code> and <code>helix check examples/greeter</code> both clean; suite 99 → 109 green, ruff clean. Record: <a href="archive/bootstrap-core-overlay-landed.html">core/overlay landed</a>. (Fleet note: the dispatched worker died twice on a model-access error and the stage was taken over inline.)</p>
     </article>
 <article class="r-fu" data-id="f-helix-p5-drive" data-status="resolved" data-tier="opus" data-written-by="claude" data-written-at="2026-07-03" data-recommends-skill="/reckon-ship bootstrap §4 P5" data-resolved-at="2026-07-03T15:16:29+00:00" data-resolved-by="reckon-ship">
     <h4 class="r-fu-title">P5 — Drive &amp; feedback: rich progress, model routing, resumable runs</h4>
@@ -417,6 +427,43 @@ Done-when
      worker; tests still green and grow to cover tasks/progress/resume.
   4. Followup written into plan + this followup marked resolved.</pre>
     <p class="r-fu-outcome">Shipped 2026-07-03 (commits <code>8e2b8ac</code>…<code>3a901c4</code>). The loop is drivable around a Claude Code worker with every signal mechanical: <code>helix/tasks.py</code> parses checkbox tasks (section-scoped, wrapped-line continuations) with per-step <code>(model: …)</code> annotations; model routing resolves CLI <code>--model</code> → task annotation → <code>helix.yaml</code> (<code>worker.build_command</code>; flag names are worker data); <code>helix run</code> renders a live progress line after each iteration (bar, done/total, iteration, elapsed, arithmetic ETA via <code>helix/progress.py</code>); a cut worker (token/usage limit, timeout, ^C — classified mechanically from exit code + stream-json result event in <code>observe.classify_trace</code>) halts the loop <code>interrupted</code> with exit 3 and a printed resume line, keeps the cut session's record, and <code>helix run -c</code> resumes — runs also chain across invocations into one campaign thread. <strong>Verified end-to-end with a real haiku worker in a tmp dir</strong>: clean pass on iteration 1 (35s, $0.11, <code>tasks 2/2 100%</code> rendered) and a full interrupt→resume cycle (15s cut → exit 3 → <code>-c</code> → pass, boxes checked). Suite 65 → 99 green, ruff clean. Record: <a href="archive/bootstrap-drive-feedback-landed.html">drive &amp; feedback landed</a>.</p>
+    </article>
+<article class="r-fu" data-id="f-helix-p6-lens" data-status="open" data-tier="opus" data-written-by="reckon-ship" data-written-at="2026-07-03" data-recommends-skill="/reckon-ship bootstrap §4 P6" data-resolved-at="" data-resolved-by="">
+    <h4 class="r-fu-title">P6 — Human lens: on-demand reckon rendering + chain review</h4>
+    <div class="r-fu-body">The last stage before the self-hosting milestone. Render the markdown truth (plans, sessions, findings) into reckon HTML on demand — reckon stays composed, never absorbed (Helix core imports nothing from it) — and grow chain-walking review tools for navigating a campaign over time. Precondition satisfied: the loop is drivable (P5) and the core/overlay boundary guarded (P4); consider dogfooding this stage through <code>helix run</code> itself.</div>
+    <pre class="r-fu-prompt">Project: helix
+Plan:    bootstrap (http://localhost:8765/helix/bootstrap.html)
+Section: §4 P6
+Tier:    opus
+
+Context
+  P0-P5 shipped: the full plan-&gt;implement-&gt;judge loop, provenance, live
+  observability, drive &amp; feedback (checkbox tasks, model routing, progress,
+  resumable runs), and the machine-guarded core/overlay split. P6 builds the
+  human lens: on-demand HTML rendering of the markdown truth via reckon, and
+  review tools over the session chain. This is also the first stage that
+  should seriously consider being dogfooded through helix run itself.
+
+State to read  (code/files, not the plan URL)
+  helix/session.py (walk_chain, iter_sessions, read_findings)
+  helix/cli.py (status/watch — the existing read-only surfaces)
+  docs/ (the reckon lens layout), ~/Code/reckon (composed capability)
+  README.md + AGENTS.md (invariant: reckon is composed, never absorbed)
+
+Scope locks / constraints (non-decision)
+  - Helix core imports nothing from reckon — rendering is a composed
+    capability the worker/tooling brings, invoked on demand.
+  - Markdown+frontmatter stays the source of truth; HTML is a projection.
+  - No model judgment in the tool; render and walk, never interpret.
+  - Keep the core project-agnostic.
+
+Done-when
+  1. A campaign (sessions, verdicts, findings, plan progress) renders to a
+     human-reviewable HTML lens on demand, without reckon imports in core.
+  2. Chain review works across multiple runs (the cross-run predecessor
+     chain P5 introduced).
+  3. Tests still green and grow to cover the lens entry points.
+  4. Followup written into plan + this followup marked resolved.</pre>
     </article>
 </section>
 

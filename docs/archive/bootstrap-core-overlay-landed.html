@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="docs-project" content="helix">
+  <meta name="reckon-type" content="research">
+  <meta name="plan-slug" content="bootstrap-core-overlay-landed">
+  <meta name="plan-title" content="Bootstrap P4 landed — core/overlay split + anti-drift">
+  <meta name="plan-summary" content="Landed record: formalized core-vs-overlay resolution (append, never replace) and the mechanical anti-drift check, wired as helix check.">
+  <meta name="plan-status" content="historical">
+  <meta name="plan-owner" content="Simon McIntosh">
+  <title>Bootstrap P4 landed — core/overlay + anti-drift | helix</title>
+  <link rel="stylesheet" href="/_shared/foundation.css">
+  <link rel="stylesheet" href="/_shared/dashboard.css">
+</head>
+<body>
+<main class="plan-doc">
+
+  <h1>Core/overlay split + anti-drift check — landed 2026-07-03</h1>
+  <p>The core-vs-overlay boundary is now formalized and machine-guarded.
+  A project extends a phase contract with
+  <code>&lt;project&gt;/prompts/overlay.&lt;phase&gt;.md</code>, which
+  <code>helix/overlay.py:resolve_prompt</code> <em>appends</em> to the packaged
+  core contract — extensions extend, they never replace. A full
+  <code>prompts/&lt;phase&gt;.md</code> replacement is a fork of the core
+  contract: resolution ignores it and the check flags it. Self-hosting is the
+  sanctioned identity case (the repo's own <code>prompts/</code> resolve to the
+  core files — no flag).</p>
+
+  <figure style="margin:1.5rem 0;">
+    <img src="/helix/figures/bootstrap/core-overlay.svg" alt="Core contract plus appended project overlay resolve into the composed phase prompt; helix check flags forks, restated headings, oversized overlays, and bad gates" style="max-width:100%;">
+    <figcaption style="font-size:12px;color:#555;margin-top:.4rem;">
+      Overlays are small data diffs appended over the shared core.
+      <code>helix check</code> guards the boundary mechanically.
+    </figcaption>
+  </figure>
+
+  <h2>Quick status</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Commit</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Overlay resolution (<code>helix/overlay.py</code>, <code>base_prompt</code> rewired)</td>
+          <td>✅ shipped</td><td><code>43074e8</code></td>
+          <td>Core + appended <code>overlay.&lt;phase&gt;.md</code>; legacy replacements never substitute.</td></tr>
+      <tr><td>Anti-drift check (<code>check_project</code> + <code>helix check</code>)</td>
+          <td>✅ shipped</td><td><code>43074e8</code></td>
+          <td>Flags forked contracts, restated core headings, oversized overlays, duplicate/unrunnable gates, missing plan/config. Exit 0 clean / 1 drift.</td></tr>
+      <tr><td>Overlay home documented (<code>projects/README.md</code>)</td>
+          <td>✅ shipped</td><td><code>43074e8</code></td>
+          <td>Overlays live in the project run dir; gates in <code>helix.yaml</code> (no separate gates file); self-hosting identity spelled out.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Verification</h2>
+  <ul>
+    <li><code>helix check .</code> (the self-hosting repo) and
+      <code>helix check examples/greeter</code> both report clean.</li>
+    <li>Suite grew 99 → 109 tests, green; ruff clean. New coverage: append
+      semantics, fork/duplication/oversize flags, gate and config problems,
+      the self-hosting identity, and the CLI exit codes.</li>
+    <li>Dispatch note: this stage was first fleet-dispatched; the worker died
+      twice on a model-access error without producing files, and the work was
+      taken over inline — the fleet spawn defaults need a look before the next
+      parallel stage.</li>
+  </ul>
+
+  <h2>What's next</h2>
+  <p>The human lens (on-demand reckon rendering and chain-walking review) is
+  the remaining roadmap stage before the self-hosting milestone. With drive
+  &amp; feedback and the overlay guard both landed, the recommended next move
+  is supervised dogfooding: seal a checkbox plan for a real Helix increment and
+  drive it through <code>helix run</code>.</p>
+
+</main>
+</body>
+</html>
