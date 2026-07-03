@@ -13,7 +13,7 @@ import typer
 from rich.console import Console
 from rich.markup import escape as esc
 
-from helix import observe, progress, session
+from helix import observe, overlay, progress, session
 from helix.config import load_config
 from helix.loop import SESSIONS_DIRNAME, run_loop
 from helix.phases import plan as plan_phase
@@ -157,6 +157,21 @@ def run(
             console.print(f"[magenta]worker cut:[/] {esc(result.reason)}")
         console.print(f"resume with: [bold]helix run {esc(project)} -c[/bold]")
     raise typer.Exit(code=_EXIT_CODE.get(result.verdict, 1))
+
+
+@app.command()
+def check(
+    project: str = typer.Argument(".", help="Project directory to audit."),
+) -> None:
+    """Anti-drift audit: flag overlays that fork core contracts, and gate/plan
+    problems. Mechanical — path identity, duplication, and config shape only."""
+    problems = overlay.check_project(Path(project))
+    if not problems:
+        console.print("[green]clean[/] — overlays extend the core, gates are sound")
+        raise typer.Exit(code=0)
+    for problem in problems:
+        console.print(f"[red]drift:[/] {esc(problem)}")
+    raise typer.Exit(code=1)
 
 
 @app.command()

@@ -179,3 +179,16 @@ def test_run_model_override_reaches_the_worker_argv(tmp_path):
     result = runner.invoke(app, ["run", str(project), "--model", "haiku"])
     assert result.exit_code == 0
     assert (project / "argv.txt").read_text().split() == ["--model", "haiku"]
+
+
+def test_check_reports_clean_and_drift(tmp_path):
+    project = _project(tmp_path, ["true"], _DONE_GATE)
+    result = runner.invoke(app, ["check", str(project)])
+    assert result.exit_code == 0
+    assert "clean" in result.stdout
+
+    (project / "prompts").mkdir()
+    (project / "prompts" / "judge.md").write_text("# forked judge\n")
+    result = runner.invoke(app, ["check", str(project)])
+    assert result.exit_code == 1
+    assert "drift" in result.stdout and "forked core contract" in result.stdout

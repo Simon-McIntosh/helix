@@ -9,20 +9,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from helix import overlay
+
 # Base prompts ship alongside the package (repo layout: prompts/ beside helix/).
-PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
+PROMPTS_DIR = overlay.CORE_PROMPTS_DIR
 
 
 def base_prompt(project: Path, phase: str) -> str:
-    """The base phase contract: project overlay first, then the packaged default.
+    """The phase contract: the packaged core plus the project's appended overlay.
 
-    A project may layer domain guidance over the core contract by shipping its
-    own ``prompts/<phase>.md``; otherwise the project-agnostic default is used.
+    A project layers domain guidance over the core contract by shipping
+    ``prompts/overlay.<phase>.md`` — appended, never substituted (see
+    :mod:`helix.overlay` for the resolution and the anti-drift check).
     """
-    for candidate in (
-        Path(project) / "prompts" / f"{phase}.md",
-        PROMPTS_DIR / f"{phase}.md",
-    ):
-        if candidate.exists():
-            return candidate.read_text()
-    return f"# {phase} phase\n\n(No base prompt found.)\n"
+    return overlay.resolve_prompt(Path(project), phase)
