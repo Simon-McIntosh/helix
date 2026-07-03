@@ -189,11 +189,10 @@ def test_loop_chains_a_new_run_onto_the_previous_campaign(tmp_path):
 
 def test_loop_reports_progress_snapshots(tmp_path):
     # The worker checks its task box; the snapshot after the iteration sees it.
-    project = _project(
-        tmp_path,
-        ["sh", "-c", "cat >/dev/null; printf '## Tasks\\n\\n- [x] t\\n' > PLAN.md; : > done.txt"],
-        _DONE_GATE,
+    check_off = (
+        "cat >/dev/null; printf '## Tasks\\n\\n- [x] t\\n' > PLAN.md; : > done.txt"
     )
+    project = _project(tmp_path, ["sh", "-c", check_off], _DONE_GATE)
     config = yaml.safe_load((project / "helix.yaml").read_text())
     config["plan"] = "PLAN.md"
     (project / "helix.yaml").write_text(yaml.safe_dump(config))

@@ -140,3 +140,42 @@ def test_watch_replays_a_session_trace(tmp_path):
     result = runner.invoke(app, ["watch", str(project)])
     assert result.exit_code == 0
     assert "working on it" in result.stdout
+
+
+def test_run_exits_three_and_prints_resume_hint_when_interrupted(tmp_path):
+    project = _project(
+        tmp_path,
+        ["sh", "-c", "cat >/dev/null; echo 'usage limit reached'; exit 1"],
+        _DONE_GATE,
+    )
+    result = runner.invoke(app, ["run", str(project)])
+    assert result.exit_code == 3
+    assert "interrupted" in result.stdout
+    assert "helix run" in result.stdout and "-c" in result.stdout
+
+
+def test_run_renders_the_progress_line(tmp_path):
+    check_off = (
+        "cat >/dev/null; printf '## Tasks\\n\\n- [x] t\\n' > PLAN.md; : > done.txt"
+    )
+    project = _project(tmp_path, ["sh", "-c", check_off], _DONE_GATE)
+    config = yaml.safe_load((project / "helix.yaml").read_text())
+    config["plan"] = "PLAN.md"
+    (project / "helix.yaml").write_text(yaml.safe_dump(config))
+    (project / "PLAN.md").write_text("## Tasks\n\n- [ ] t\n")
+
+    result = runner.invoke(app, ["run", str(project)])
+    assert result.exit_code == 0
+    assert "tasks 1/1" in result.stdout
+    assert "iter 1/3" in result.stdout
+
+
+def test_run_model_override_reaches_the_worker_argv(tmp_path):
+    project = _project(
+        tmp_path,
+        ["sh", "-c", 'cat >/dev/null; printf "%s " "$@" > argv.txt; : > done.txt', "w"],
+        _DONE_GATE,
+    )
+    result = runner.invoke(app, ["run", str(project), "--model", "haiku"])
+    assert result.exit_code == 0
+    assert (project / "argv.txt").read_text().split() == ["--model", "haiku"]

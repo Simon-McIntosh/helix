@@ -13,7 +13,7 @@ import typer
 from rich.console import Console
 from rich.markup import escape as esc
 
-from helix import observe, session
+from helix import observe, progress, session
 from helix.config import load_config
 from helix.loop import SESSIONS_DIRNAME, run_loop
 from helix.phases import plan as plan_phase
@@ -77,8 +77,9 @@ def plan(
 
 
 # verdict -> process exit code, so shells and CI can branch on the outcome.
-_EXIT_CODE = {"pass": 0, "blocked": 2}
-_VERDICT_STYLE = {"pass": "green", "blocked": "yellow"}
+# 3 marks an interrupted-but-resumable run (token/usage limit, worker cut).
+_EXIT_CODE = {"pass": 0, "blocked": 2, "interrupted": 3}
+_VERDICT_STYLE = {"pass": "green", "blocked": "yellow", "interrupted": "magenta"}
 
 
 def _stream_observer():
@@ -92,6 +93,15 @@ def _stream_observer():
     return observe_line
 
 
+def _progress_reporter():
+    """Render a mechanical progress snapshot as one highlighted status line."""
+
+    def report(snap) -> None:
+        console.print(f"[bold cyan]{esc(progress.describe(snap))}[/bold cyan]")
+
+    return report
+
+
 @app.command()
 def run(
     project: str = typer.Argument(..., help="Project directory to run the loop in."),
@@ -103,23 +113,49 @@ def run(
         "--stream/--quiet",
         help="Render the worker's live train-of-thought as it runs.",
     ),
+    model: str = typer.Option(
+        "",
+        "--model",
+        help="Worker model override for every iteration (outranks the plan's "
+        "per-task annotations and the project config).",
+    ),
+    resume: bool = typer.Option(
+        False,
+        "--continue",
+        "-c",
+        help="Resume an interrupted run: continue the campaign chain and hand "
+        "the first worker invocation its native continue flag.",
+    ),
 ) -> None:
     """Autonomous loop: iterate implement->judge until the oracle is satisfied.
 
     With --stream (default) the worker's train-of-thought and actions render live
-    as it works; the raw trace is also streamed to each session's
-    evidence/worker.txt, so `tail -f` follows it from another shell.
+    as it works, followed by a task-progress line (done/total bar, iteration,
+    elapsed, mechanical ETA); the raw trace also streams to each session's
+    evidence/worker.txt, so `tail -f` follows it from another shell. A worker cut
+    off by a token/usage limit halts the loop with exit code 3 — rerun with -c
+    from the same directory to resume where it stopped.
     """
     observer = _stream_observer() if stream else None
     announce = (lambda msg: console.rule(f"[bold]{msg}[/bold]")) if stream else None
     result = run_loop(
-        Path(project), max_iterations or None, observer=observer, announce=announce
+        Path(project),
+        max_iterations or None,
+        observer=observer,
+        announce=announce,
+        on_progress=_progress_reporter() if stream else None,
+        model=model or None,
+        resume=resume,
     )
     style = _VERDICT_STYLE.get(result.verdict, "red")
     console.print(
         f"[{style}]{result.verdict}[/] after {result.iterations} iteration(s) "
         f"— {len(result.sessions)} session(s) written"
     )
+    if result.verdict == "interrupted":
+        if result.reason:
+            console.print(f"[magenta]worker cut:[/] {esc(result.reason)}")
+        console.print(f"resume with: [bold]helix run {esc(project)} -c[/bold]")
     raise typer.Exit(code=_EXIT_CODE.get(result.verdict, 1))
 
 
