@@ -12,7 +12,10 @@ Produce, as plain-text artifacts on disk:
 
 - **Intent** — the expanded specification, feature list, and constraints.
 - **Plan** — an ordered set of small, independently verifiable task units, each
-  with a clear write scope and a verification command.
+  with a clear write scope and a verification command. Write them as markdown
+  checkboxes (`- [ ]`) — the boxes are the loop's progress signal — and price
+  each step with an optional `(model: …)` annotation the loop routes to the
+  worker.
 - **Oracle gates** — the completion criteria, each tagged `surrogate` (fast,
   every-iteration backpressure) or `blocking` (slow / physical; the loop waits
   for human ground truth).

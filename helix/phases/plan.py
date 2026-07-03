@@ -45,8 +45,14 @@ _BODY_TEMPLATE = """# Plan
 
 ## Tasks
 
-<!-- Ordered, independently verifiable task units. Each names a write scope and
-     a verification command. -->
+<!-- Ordered, independently verifiable task units as markdown checkboxes —
+     the boxes are the loop's progress signal and the worker checks them off.
+     Each names a write scope and a verification command; an optional
+     `(model: …)` annotation routes that step's worker model, e.g.:
+
+     - [ ] Build the parser; verify: `pytest tests/test_parser.py` (model: haiku)
+-->
+
 
 ## Oracle gates
 
