@@ -77,3 +77,17 @@ def test_read_tasks_from_a_plan_document(tmp_path):
 
 def test_read_tasks_missing_file_is_empty(tmp_path):
     assert read_tasks(tmp_path / "absent.md") == []
+
+
+def test_parse_tasks_joins_wrapped_task_lines():
+    body = (
+        "## Tasks\n\n"
+        "- [ ] Create the widget with a long description that\n"
+        "  wraps onto a continuation line (model: haiku)\n"
+        "- [x] A second, single-line task\n"
+    )
+    items = parse_tasks(body)
+    assert len(items) == 2
+    assert items[0].model == "haiku"
+    assert items[0].text.endswith("wraps onto a continuation line")
+    assert items[1].done is True

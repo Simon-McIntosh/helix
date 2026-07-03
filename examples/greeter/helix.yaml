@@ -1,0 +1,43 @@
+# Smoke-example run configuration: a tiny greeting library driven end-to-end
+# by the loop with a haiku-tier Claude Code worker. Copy this directory to a
+# scratch location and run `helix run <dir>` — it needs nothing but python3
+# and the `claude` CLI on PATH.
+
+repo: "."
+plan: PLAN.md
+
+worker:
+  # -p reads the composed prompt from stdin; stream-json makes the run
+  # watchable live; acceptEdits lets the worker land file edits unprompted.
+  command:
+    [
+      "claude",
+      "-p",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--permission-mode",
+      "acceptEdits",
+    ]
+  # Cheap tier for a smoke task; a plan task's `(model: …)` annotation or
+  # `helix run --model …` outranks this.
+  model: haiku
+  timeout_s: 300
+
+caps:
+  max_iterations: 4
+
+gates:
+  # `python3 -m unittest test_greeter` (not discover) so the gate FAILS while
+  # the test module does not exist yet — a gate that passes on an empty
+  # directory is no backpressure at all.
+  - id: tests
+    name: greeter unit tests
+    tier: surrogate
+    criterion: the stdlib unittest module test_greeter passes
+    command: "python3 -m unittest -v test_greeter"
+  - id: tasks
+    name: plan tasks all checked
+    tier: surrogate
+    criterion: no open checkbox remains in the plan's Tasks section
+    command: "! grep -q -- '- \\[ \\]' PLAN.md"

@@ -11,6 +11,8 @@ progress and evidence back to disk. Specifically:
 - Make a single coherent change within its write scope.
 - Run its verification command and record the result as evidence.
 - Update the progress state: what you did, what passed/failed, what is next.
+  When the plan's Tasks are markdown checkboxes, check off (`- [x]`) each task
+  you completed — the box counts are the loop's only progress signal.
 - Stamp any new finding with the date and the conditions under which it holds.
 
 Use your own native tools, skills, and edit format — that is what you are good

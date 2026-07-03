@@ -60,13 +60,23 @@ def _tasks_section(body: str) -> str:
 
 
 def parse_tasks(body: str) -> list[Task]:
-    """Parse the plan body's checkbox tasks into :class:`Task` records."""
-    items: list[Task] = []
+    """Parse the plan body's checkbox tasks into :class:`Task` records.
+
+    An indented non-checkbox line is a markdown list continuation and belongs
+    to the task above it — wrapped task text (and an annotation on a wrapped
+    line) counts as one task.
+    """
+    raw: list[tuple[str, str]] = []  # (checkbox mark, accumulated text)
     for line in _tasks_section(body).splitlines():
         match = _CHECKBOX.match(line)
-        if not match:
-            continue
-        mark, text = match.groups()
+        if match:
+            raw.append(match.groups())
+        elif raw and line[:1].isspace() and line.strip():
+            mark, text = raw[-1]
+            raw[-1] = (mark, f"{text} {line.strip()}")
+
+    items: list[Task] = []
+    for mark, text in raw:
         model_match = _MODEL.search(text)
         model = model_match.group(1) if model_match else None
         text = _MODEL.sub("", text).strip()
