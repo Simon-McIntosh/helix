@@ -172,9 +172,17 @@ stage; later stages are about scaling across projects and years, not capability.
   Formalize core vs overlay; per-project data as small diffs; a check that
   guards overlays from forking core contracts.
 
-- **P5 — Drive & feedback (Ralph-loop usability)**
-  Make the loop pleasant and robust to *drive*, designed initially around a
-  Claude Code worker. The tool stays dumb — every signal below is mechanical.
+- **P5 — Drive & feedback (Ralph-loop usability)** ✅
+  Shipped 2026-07-03. The loop is pleasant and robust to *drive*, designed
+  initially around a Claude Code worker; the tool stayed dumb — every signal
+  below is mechanical. Verified end-to-end in a tmp dir with a real haiku
+  worker: a clean run to `pass` (worker wrote the files, ran the gate, checked
+  its boxes; 35s, $0.11) and a full interrupt→resume cycle (15s timeout cut →
+  exit 3 with resume hint → `helix run -c` continued the same conversation to
+  `pass`). The suite grew 65 → 99 tests, green, lint clean. Landed across
+  `helix/tasks.py`, `helix/progress.py`, `helix/worker.py` (`build_command`,
+  exit-code evidence), `helix/observe.py` (`classify_trace`/`halt_reason`),
+  `helix/loop.py`, `helix/cli.py`, and `examples/greeter/`.
   - **Plan tasks are machine-countable.** The Tasks section of the agreed plan
     uses markdown checkboxes (`- [ ]` / `- [x]`); the worker checks tasks off
     as part of updating progress state. A task may carry a per-step model

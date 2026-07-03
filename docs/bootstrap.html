@@ -14,26 +14,27 @@
   <meta name="plan-tier" content="opus">
   <meta name="plan-milestone" content="M1">
   <meta name="plan-owner" content="Simon McIntosh">
-  <meta name="plan-impl" content="0.62">
+  <meta name="plan-impl" content="0.63">
   <title>Helix Bootstrap | helix</title>
   <link rel="stylesheet" href="/_shared/foundation.css">
   <link rel="stylesheet" href="/_shared/dashboard.css">
 <meta name="plan-modified" content="2026-07-03">
-<meta name="plan-version" content="5">
+<meta name="plan-version" content="6">
 </head>
 <body>
   <main class="plan-doc">
 
     <section aria-label="Status and next steps" style="margin:0 0 1.75rem;padding:1rem 1.25rem;border:1px solid #d0d7de;border-left:4px solid #2563eb;border-radius:6px;background:#f8fafc;">
-      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 4 of 7 phases shipped (impl ≈ 0.62)</p>
+      <p style="margin:0 0 .5rem;font-weight:600;color:#1a1a1a;">Where we are — 5 of 8 phases shipped (impl ≈ 0.63)</p>
       <ul style="margin:.25rem 0 .75rem;padding-left:1.25rem;color:#1a1a1a;">
         <li><strong>P0 — Scaffold &amp; init</strong> ✅ shipped.</li>
         <li><strong>P1 — Phase-separated loop + fresh judge</strong> ✅ shipped — the dumb outer loop runs <code>implement→judge</code> with the test suite as the surrogate oracle; <code>helix run</code> works end-to-end.</li>
         <li><strong>P2 — Interactive planning entry</strong> ✅ shipped — the <code>plan</code> phase is the human's seat: <code>helix plan</code> co-authors a <code>PlanState</code> contract that <code>helix run</code> consumes unchanged.</li>
         <li><strong>P3 — Session management &amp; provenance + observability</strong> ✅ shipped — <code>helix status</code> walks the predecessor chain; findings persist as age-/condition-stamped <code>Finding</code> records; and a running worker is now <em>watchable from outside</em> — <code>helix run --stream</code> renders the live train-of-thought, <code>tail -f</code> follows the raw stream-json, <code>helix watch</code> replays a trace. Verified with a real <code>claude</code> worker to a <code>pass</code>; 65 tests green.</li>
-        <li><strong>P4 — Project-agnostic core split + anti-drift check</strong> ⟵ <strong>next</strong>: formalize core vs overlay (<code>projects/&lt;name&gt;/</code> as small data diffs) and add a check that guards overlays from forking core contracts (see the open followup in the Followups panel).</li>
+        <li><strong>P5 — Drive &amp; feedback</strong> ✅ shipped — checkbox plan tasks (+ per-step <code>(model: …)</code>), model routing, live task-progress bar with mechanical ETA, and resumable runs: a token-limit/timeout/^C cut exits 3 and <code>helix run -c</code> continues where it stopped. Verified end-to-end with a real haiku worker; 99 tests green. Record: <a href="archive/bootstrap-drive-feedback-landed.html">landed</a>.</li>
+        <li><strong>P4 — Project-agnostic core split + anti-drift check</strong> ⟵ <strong>next</strong>: formalize core vs overlay and add a check that guards overlays from forking core contracts (see the open followup in the Followups panel).</li>
       </ul>
-      <p style="margin:0 0 .5rem;color:#1a1a1a;"><strong>Handoff for the next session:</strong> the full loop, provenance, and live observability are shipped — Helix is now dogfoggable under supervision (single-step <code>helix run --max-iterations 1</code>, or bounded-autonomous with the live view). Start P4 at <code>helix/phases/__init__.py</code> (<code>base_prompt</code> already resolves project-overlay-then-default), <code>helix/config.py</code> (gates/plan are project data), and the empty <code>projects/</code> dir (the overlay home). P4 formalizes and machine-guards that boundary — it does not invent it. Keep domain knowledge out of the core.</p>
+      <p style="margin:0 0 .5rem;color:#1a1a1a;"><strong>Handoff for the next session:</strong> the loop is now drivable day-to-day: seal a checkbox plan, <code>helix run</code> with the live view and progress line, resume any cut run with <code>-c</code>, and iterate on <code>examples/greeter/</code> in a tmp dir. P4 (core/overlay + anti-drift) is the open stage; supervised dogfooding on Helix itself is unblocked.</p>
       <p style="margin:0;color:#1a1a1a;">Full design &amp; roadmap: <a href="https://github.com/Simon-McIntosh/helix/blob/main/docs/specs/2026-06-30-helix-bootstrap-design.md">the bootstrap design markdown</a> — the source of truth. This page is the rendered lens over it.</p>
     </section>
 
@@ -172,15 +173,17 @@
       worker to a <code>pass</code>; 65 tests green.</li>
       <li><strong>P4 — Project-agnostic core split + anti-drift check.</strong></li>
       <li><strong>P5 — Drive &amp; feedback (Ralph-loop usability).</strong>
-      Designed initially around a Claude Code worker; every signal mechanical.
-      Plan tasks as markdown checkboxes (machine-countable, per-task
-      <code>(model: …)</code> annotations); model routing (CLI override → task
-      annotation → <code>helix.yaml</code>); rich run feedback (task progress
-      bar, iteration, elapsed, mechanical ETA); token-limit robustness — the
-      loop halts <code>interrupted</code> (exit 3) and <code>helix run -c</code>
-      resumes from the run dir with the worker's native continue flag; a
-      stdlib-only haiku smoke example for tmp-space iteration before
-      dogfooding.</li>
+      <span class="badge badge-shipped">✓ landed 2026-07-03</span>
+      Shipped: checkbox plan tasks with per-step <code>(model: …)</code>
+      annotations; model routing (CLI <code>--model</code> → task annotation →
+      <code>helix.yaml</code>); live progress line (bar, done/total, iteration,
+      elapsed, arithmetic ETA); token-limit robustness — a cut worker halts
+      <code>interrupted</code> (exit 3) and <code>helix run -c</code> resumes
+      the same conversation; <code>examples/greeter/</code> smoke project.
+      Verified end-to-end with a real haiku worker (clean pass 35s/$0.11, and
+      interrupt→resume to pass); tests 65 → 99 green. Full record:
+      <a href="archive/bootstrap-drive-feedback-landed.html">drive &amp;
+      feedback landed</a>.</li>
       <li><strong>P6 — Human lens.</strong> On-demand HTML rendering via reckon and
       chain-walking review tools.</li>
       <li><strong>Milestone — self-hosting.</strong> Helix drives its own
@@ -371,7 +374,7 @@ Done-when
   3. Tests still green and grow to cover the overlay resolution + drift check.
   4. Followup written into plan + this followup marked resolved.</pre>
     </article>
-<article class="r-fu" data-id="f-helix-p5-drive" data-status="open" data-tier="opus" data-written-by="claude" data-written-at="2026-07-03" data-recommends-skill="/reckon-ship bootstrap §4 P5" data-resolved-at="" data-resolved-by="">
+<article class="r-fu" data-id="f-helix-p5-drive" data-status="resolved" data-tier="opus" data-written-by="claude" data-written-at="2026-07-03" data-recommends-skill="/reckon-ship bootstrap §4 P5" data-resolved-at="2026-07-03T15:16:29+00:00" data-resolved-by="reckon-ship">
     <h4 class="r-fu-title">P5 — Drive &amp; feedback: rich progress, model routing, resumable runs</h4>
     <div class="r-fu-body">Make the loop pleasant and robust to <em>drive</em>, designed initially around a Claude Code worker, with every signal mechanical: checkbox plan tasks with per-task <code>(model: …)</code> annotations, model routing (CLI override → task annotation → <code>helix.yaml</code>), a live progress bar with tasks done/remaining + mechanical ETA, token-limit robustness with an <code>interrupted</code> halt and <code>helix run -c</code> resume, and a stdlib-only haiku smoke example for tmp-space iteration before dogfooding.</div>
     <pre class="r-fu-prompt">Project: helix
@@ -413,6 +416,7 @@ Done-when
   3. The haiku smoke example drives end-to-end in a tmp dir with a real
      worker; tests still green and grow to cover tasks/progress/resume.
   4. Followup written into plan + this followup marked resolved.</pre>
+    <p class="r-fu-outcome">Shipped 2026-07-03 (commits <code>8e2b8ac</code>…<code>3a901c4</code>). The loop is drivable around a Claude Code worker with every signal mechanical: <code>helix/tasks.py</code> parses checkbox tasks (section-scoped, wrapped-line continuations) with per-step <code>(model: …)</code> annotations; model routing resolves CLI <code>--model</code> → task annotation → <code>helix.yaml</code> (<code>worker.build_command</code>; flag names are worker data); <code>helix run</code> renders a live progress line after each iteration (bar, done/total, iteration, elapsed, arithmetic ETA via <code>helix/progress.py</code>); a cut worker (token/usage limit, timeout, ^C — classified mechanically from exit code + stream-json result event in <code>observe.classify_trace</code>) halts the loop <code>interrupted</code> with exit 3 and a printed resume line, keeps the cut session's record, and <code>helix run -c</code> resumes — runs also chain across invocations into one campaign thread. <strong>Verified end-to-end with a real haiku worker in a tmp dir</strong>: clean pass on iteration 1 (35s, $0.11, <code>tasks 2/2 100%</code> rendered) and a full interrupt→resume cycle (15s cut → exit 3 → <code>-c</code> → pass, boxes checked). Suite 65 → 99 green, ruff clean. Record: <a href="archive/bootstrap-drive-feedback-landed.html">drive &amp; feedback landed</a>.</p>
     </article>
 </section>
 

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="docs-project" content="helix">
+  <meta name="reckon-type" content="research">
+  <meta name="plan-slug" content="bootstrap-drive-feedback-landed">
+  <meta name="plan-title" content="Bootstrap P5 landed — drive &amp; feedback">
+  <meta name="plan-summary" content="Landed record: checkbox plan tasks, model routing, rich progress feedback, and token-limit-robust resumable runs, verified end-to-end with a real haiku worker.">
+  <meta name="plan-status" content="historical">
+  <meta name="plan-owner" content="Simon McIntosh">
+  <title>Bootstrap P5 landed — drive &amp; feedback | helix</title>
+  <link rel="stylesheet" href="/_shared/foundation.css">
+  <link rel="stylesheet" href="/_shared/dashboard.css">
+</head>
+<body>
+<main class="plan-doc">
+
+  <h1>Drive &amp; feedback — landed 2026-07-03</h1>
+  <p>The Ralph-loop usability stage: <code>helix run</code> is now pleasant and
+  robust to drive day-to-day around a Claude Code worker. Every new signal is
+  mechanical — checkbox counts, argv composition, exit-code/stream-event
+  classification, arithmetic ETA. No model judgment entered the loop.</p>
+
+  <figure style="margin:1.5rem 0;">
+    <img src="/helix/figures/bootstrap/run-lifecycle.svg" alt="Run lifecycle: plan contract with checkbox tasks feeds the loop; model routed per step; progress line after each iteration; a cut worker exits 3 and helix run -c resumes" style="max-width:100%;">
+    <figcaption style="font-size:12px;color:#555;margin-top:.4rem;">
+      The resumable run lifecycle. The plan's checkboxes are the progress
+      signal; the model routes per step (CLI → task annotation →
+      <code>helix.yaml</code>); a cut worker halts the loop resumably
+      (exit 3) and <code>helix run -c</code> continues the same conversation.
+    </figcaption>
+  </figure>
+
+  <h2>Quick status</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Status</th><th>Commit</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>Checkbox tasks + per-step <code>(model: …)</code> (<code>helix/tasks.py</code>)</td>
+          <td>✅ shipped</td><td><code>8e2b8ac</code>, <code>c24509c</code></td>
+          <td>Section-scoped parsing, wrapped-line continuations, 10 tests.</td></tr>
+      <tr><td>Model routing + resume argv (<code>helix/worker.py</code>, <code>helix/config.py</code>)</td>
+          <td>✅ shipped</td><td><code>30bff72</code></td>
+          <td>CLI <code>--model</code> &gt; task annotation &gt; config; flag names are worker data.</td></tr>
+      <tr><td>Mechanical trace classification (<code>helix/observe.py</code>)</td>
+          <td>✅ shipped</td><td><code>30bff72</code></td>
+          <td>Exit code + stream-json result event only — prose about limits can't trip it.</td></tr>
+      <tr><td>Interrupted halt + <code>-c</code> resume (<code>helix/loop.py</code>, <code>helix/cli.py</code>)</td>
+          <td>✅ shipped</td><td><code>3bbab40</code>, <code>d7a1297</code>, <code>58534e9</code>, <code>3a901c4</code></td>
+          <td>Exit 3 with resume hint; timeout/^C halt resumably; cut sessions keep their record; runs chain across invocations.</td></tr>
+      <tr><td>Progress feedback (<code>helix/progress.py</code>)</td>
+          <td>✅ shipped</td><td><code>8e2b8ac</code>, <code>d7a1297</code></td>
+          <td>Bar + done/total + iteration + elapsed + arithmetic ETA after every iteration.</td></tr>
+      <tr><td>Smoke example (<code>examples/greeter/</code>)</td>
+          <td>✅ shipped</td><td><code>c24509c</code></td>
+          <td>Stdlib-only; sealed two-task haiku plan; copy-to-tmp workflow documented.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>End-to-end verification (real <code>claude</code> haiku worker, tmp dir)</h2>
+  <ul>
+    <li><strong>Clean run:</strong> <code>helix run</code> on the greeter copy —
+      worker init showed <code>model=claude-haiku-4-5</code> (routed by config),
+      wrote <code>greeter.py</code> + <code>test_greeter.py</code>, ran the unittest
+      gate, checked both boxes; judge <code>pass</code> on iteration 1; progress
+      line rendered <code>tasks 2/2 100% · iter 1/4 · elapsed 35s</code>;
+      exit 0; cost $0.11.</li>
+    <li><strong>Interrupt → resume:</strong> with a 15s worker timeout the run
+      halted <code>interrupted</code>, printed the reason
+      (<code>worker timeout after 15s</code>) and the resume line, exit 3; then
+      <code>helix run -c</code> passed <code>--continue</code> to the worker,
+      which picked up its cut conversation and drove to <code>pass</code> with
+      both boxes checked, exit 0.</li>
+    <li><strong>Suite:</strong> 65 → 99 tests, green; ruff clean. New coverage:
+      tasks (10), progress (7), classification (6), loop routing/interrupt/resume/
+      chaining (5), CLI exit codes/progress/override (3).</li>
+  </ul>
+
+  <h2>What's next</h2>
+  <p>The core/overlay formalization and anti-drift check is the remaining open
+  stage of the bootstrap plan (its followup carries the dispatch prompt), then
+  the human lens. With drive &amp; feedback landed, supervised dogfooding on
+  Helix itself is unblocked: seal a checkbox plan for the next increment and run
+  it through the loop.</p>
+
+</main>
+</body>
+</html>

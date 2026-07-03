@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 320" font-family="system-ui,-apple-system,sans-serif" role="img" aria-label="The resumable run lifecycle with model routing and progress feedback">
+  <defs>
+    <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#1a1a1a"/>
+    </marker>
+    <marker id="arm" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#9333ea"/>
+    </marker>
+  </defs>
+
+  <!-- plan contract -->
+  <rect x="20" y="60" width="180" height="92" rx="6" fill="#fff" stroke="#333"/>
+  <rect x="20" y="60" width="180" height="4" rx="2" fill="#2563eb"/>
+  <text x="110" y="84" text-anchor="middle" font-size="14" font-weight="600" fill="#1a1a1a">agreed plan</text>
+  <text x="110" y="103" text-anchor="middle" font-size="11" fill="#444">- [x] task done</text>
+  <text x="110" y="119" text-anchor="middle" font-size="11" fill="#444">- [ ] task (model: haiku)</text>
+  <text x="110" y="139" text-anchor="middle" font-size="10" fill="#777">boxes = the progress signal</text>
+
+  <!-- loop box -->
+  <rect x="270" y="40" width="330" height="130" rx="8" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4 3"/>
+  <text x="435" y="30" text-anchor="middle" font-size="11" fill="#64748b">the dumb loop — model routed per step: CLI → task → helix.yaml</text>
+
+  <rect x="290" y="70" width="130" height="64" rx="6" fill="#fff" stroke="#333"/>
+  <text x="355" y="97" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">implement</text>
+  <text x="355" y="115" text-anchor="middle" font-size="10" fill="#444">worker --model …</text>
+
+  <rect x="450" y="70" width="130" height="64" rx="6" fill="#fff" stroke="#333"/>
+  <text x="515" y="97" text-anchor="middle" font-size="13" font-weight="600" fill="#1a1a1a">judge</text>
+  <text x="515" y="115" text-anchor="middle" font-size="10" fill="#444">oracle verdict</text>
+
+  <line x1="200" y1="106" x2="286" y2="106" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#ar)"/>
+  <line x1="420" y1="102" x2="446" y2="102" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#ar)"/>
+  <path d="M450,120 C438,132 432,132 420,120" fill="none" stroke="#1a1a1a" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="435" y="148" text-anchor="middle" font-size="10" fill="#444">fail → iterate</text>
+
+  <!-- pass out -->
+  <line x1="580" y1="102" x2="700" y2="102" stroke="#1a1a1a" stroke-width="1.2" marker-end="url(#ar)"/>
+  <rect x="704" y="80" width="130" height="46" rx="6" fill="#fff" stroke="#16a34a"/>
+  <text x="769" y="99" text-anchor="middle" font-size="13" font-weight="600" fill="#16a34a">pass · exit 0</text>
+  <text x="769" y="116" text-anchor="middle" font-size="10" fill="#444">blocked · exit 2</text>
+
+  <!-- progress line -->
+  <rect x="270" y="190" width="330" height="30" rx="4" fill="#0f172a"/>
+  <text x="282" y="209" font-size="11" fill="#22d3ee" font-family="ui-monospace,monospace">████████████░░░░ tasks 3/4 75% · iter 2/8 · eta 4m</text>
+  <line x1="435" y1="170" x2="435" y2="186" stroke="#64748b" stroke-width="1" marker-end="url(#ar)"/>
+  <text x="612" y="209" font-size="10" fill="#64748b">after every iteration</text>
+
+  <!-- interrupted branch -->
+  <path d="M355,134 L355,262 L446,262" fill="none" stroke="#9333ea" stroke-width="1.4" marker-end="url(#arm)"/>
+  <rect x="450" y="240" width="200" height="46" rx="6" fill="#fff" stroke="#9333ea"/>
+  <text x="550" y="259" text-anchor="middle" font-size="12" font-weight="600" fill="#9333ea">interrupted · exit 3</text>
+  <text x="550" y="276" text-anchor="middle" font-size="10" fill="#444">token/usage limit · timeout · ^C</text>
+  <text x="352" y="240" text-anchor="end" font-size="10" fill="#9333ea">worker cut</text>
+
+  <!-- resume back -->
+  <text x="735" y="252" text-anchor="middle" font-size="11" font-weight="600" fill="#9333ea">helix run -c</text>
+  <text x="735" y="300" text-anchor="middle" font-size="10" fill="#444">state is on disk; the worker continues its cut conversation (--continue)</text>
+  <path d="M654,262 L816,262 L816,150 L600,150" fill="none" stroke="#9333ea" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#arm)"/>
+</svg>
