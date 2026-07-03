@@ -142,3 +142,40 @@ def test_render_stream_drops_skipped_lines():
         "plain",
     ]
     assert observe.render_stream(lines, markup=False) == ["hi", "plain"]
+
+
+def _result(subtype="success", **extra):
+    return json.dumps({"type": "result", "subtype": subtype, **extra})
+
+
+def test_classify_trace_ok_on_clean_exit_and_success_result():
+    trace = _result(num_turns=3) + "\n"
+    assert observe.classify_trace(trace, 0) == observe.OK
+
+
+def test_classify_trace_ok_for_plain_text_worker():
+    # A stand-in/plain worker emits no result event; exit 0 is completion.
+    assert observe.classify_trace("did the thing\n", 0) == observe.OK
+
+
+def test_classify_trace_interrupted_on_nonzero_exit():
+    assert observe.classify_trace("Claude AI usage limit reached\n", 1) == (
+        observe.INTERRUPTED
+    )
+
+
+def test_classify_trace_interrupted_on_error_result_event():
+    trace = _result(subtype="error_during_execution", is_error=True) + "\n"
+    assert observe.classify_trace(trace, 0) == observe.INTERRUPTED
+
+
+def test_classify_trace_not_fooled_by_prose_about_limits():
+    trace = "let's discuss the rate limit design\n" + _result() + "\n"
+    assert observe.classify_trace(trace, 0) == observe.OK
+
+
+def test_halt_reason_prefers_the_result_event_then_the_tail():
+    trace = _result(subtype="error", result="Context low · Run /compact") + "\n"
+    assert observe.halt_reason(trace) == "Context low · Run /compact"
+    assert observe.halt_reason("boom: usage limit\n") == "boom: usage limit"
+    assert observe.halt_reason("") is None

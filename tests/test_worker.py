@@ -7,23 +7,23 @@ the worker's tools. These tests use trivial stand-in commands (cat, sh) as the
 
 import pytest
 
-from helix.worker import converse, invoke
+from helix.worker import build_command, converse, invoke
 
 
 def test_invoke_feeds_prompt_on_stdin_and_returns_output(tmp_path):
-    out = invoke("hello\nworld", cwd=tmp_path, command=["cat"])
+    out = invoke("hello\nworld", cwd=tmp_path, command=["cat"]).output
     assert "hello" in out
     assert "world" in out
 
 
 def test_invoke_runs_in_cwd(tmp_path):
     (tmp_path / "note.txt").write_text("from-the-repo")
-    out = invoke("ignored", cwd=tmp_path, command=["cat", "note.txt"])
+    out = invoke("ignored", cwd=tmp_path, command=["cat", "note.txt"]).output
     assert "from-the-repo" in out
 
 
 def test_invoke_captures_stderr_as_evidence(tmp_path):
-    out = invoke("x", cwd=tmp_path, command=["sh", "-c", "echo oops 1>&2"])
+    out = invoke("x", cwd=tmp_path, command=["sh", "-c", "echo oops 1>&2"]).output
     assert "oops" in out
 
 
@@ -57,7 +57,24 @@ def test_invoke_streams_to_sink_file_live(tmp_path):
     )
     # The sink captured the stream as it arrived, matching the returned output.
     assert sink.read_text() == "a\nb\nc\n"
-    assert out == "a\nb\nc\n"
+    assert out.output == "a\nb\nc\n"
+
+
+def test_invoke_reports_the_worker_exit_code(tmp_path):
+    assert invoke("x", cwd=tmp_path, command=["sh", "-c", "exit 0"]).returncode == 0
+    assert invoke("x", cwd=tmp_path, command=["sh", "-c", "exit 7"]).returncode == 7
+
+
+def test_build_command_routes_model_and_resume():
+    base = ["claude", "-p"]
+    assert build_command(base) == base
+    assert build_command(base, model="haiku") == ["claude", "-p", "--model", "haiku"]
+    assert build_command(base, resume=True) == ["claude", "-p", "--continue"]
+    assert build_command(
+        base, model="sonnet", model_flag="-m", resume=True, resume_args=["-c"]
+    ) == ["claude", "-p", "-m", "sonnet", "-c"]
+    # The base argv is never mutated.
+    assert base == ["claude", "-p"]
 
 
 def test_invoke_calls_on_line_per_line(tmp_path):

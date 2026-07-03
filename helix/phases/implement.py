@@ -32,6 +32,7 @@ class ImplementResult:
     id: str
     session_dir: Path
     output: str
+    returncode: int = 0
 
 
 def _recent_summaries(sessions_dir: Path) -> str:
@@ -73,13 +74,16 @@ def run(
     predecessor: str | None = None,
     now: datetime | None = None,
     observer: Callable[[str], None] | None = None,
+    command: list[str] | None = None,
 ) -> ImplementResult:
     """Compose the prompt, run the worker in the repo, and persist a session.
 
     The session directory is created *before* the worker runs so its trace
     streams into ``evidence/worker.txt`` live (tail-able during the run). An
     optional ``observer`` is called with each output line for a live rendered
-    train-of-thought (see :mod:`helix.observe`).
+    train-of-thought (see :mod:`helix.observe`). ``command`` overrides the
+    config's worker argv — the loop uses it to route a model or a resume flag
+    (see :func:`helix.worker.build_command`) without touching config.
     """
     project = Path(project)
     sessions_dir = Path(sessions_dir)
@@ -90,16 +94,20 @@ def run(
     session_id, session_dir = session.prepare_session(sessions_dir, slug=slug, now=now)
     (session_dir / "evidence" / "prompt.txt").write_text(prompt)
 
-    output = worker.invoke(
+    invoked = worker.invoke(
         prompt,
         cwd=repo,
-        command=config.worker.command,
+        command=command or config.worker.command,
         timeout_s=config.worker.timeout_s,
         sink=session_dir / "evidence" / "worker.txt",
         on_line=observer,
     )
+    output = invoked.output
 
-    summary = f"Worker ran in `{repo.name}` ({len(output)} chars of output)."
+    summary = (
+        f"Worker ran in `{repo.name}` ({len(output)} chars of output, "
+        f"exit {invoked.returncode})."
+    )
     body = (
         f"# implement session\n\nThe worker was invoked with a fresh context in "
         f"`{repo}`. See `evidence/prompt.txt` for the composed prompt and "
@@ -114,4 +122,9 @@ def run(
         summary=summary,
         body=body,
     )
-    return ImplementResult(id=session_id, session_dir=session_dir, output=output)
+    return ImplementResult(
+        id=session_id,
+        session_dir=session_dir,
+        output=output,
+        returncode=invoked.returncode,
+    )

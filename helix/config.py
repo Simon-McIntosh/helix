@@ -33,6 +33,22 @@ class WorkerConfig(BaseModel):
     timeout_s: int | None = Field(
         default=None, description="Per-invocation wall-clock cap (seconds)."
     )
+    model: str | None = Field(
+        default=None,
+        description="Default model routed to the worker. Overridden per run by "
+        "the CLI and per step by a task's `(model: …)` annotation in the plan.",
+    )
+    model_flag: str = Field(
+        default="--model",
+        description="The worker's own flag for selecting a model. Worker data — "
+        "the default fits Claude Code.",
+    )
+    resume_args: list[str] = Field(
+        default_factory=lambda: ["--continue"],
+        description="Extra argv that makes the worker continue its most recent "
+        "conversation in the repo — used for the first invocation after an "
+        "interrupted run. The default fits Claude Code.",
+    )
 
 
 class Caps(BaseModel):

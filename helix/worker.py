@@ -18,7 +18,44 @@ from __future__ import annotations
 import subprocess
 import threading
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass(frozen=True)
+class InvokeResult:
+    """What one worker invocation produced: the streamed output and exit code.
+
+    The exit code is evidence, not judgment — the loop classifies it
+    mechanically (see :func:`helix.observe.classify_trace`) to tell a completed
+    invocation from one that was cut off by a token/usage limit or a crash.
+    """
+
+    output: str
+    returncode: int
+
+
+def build_command(
+    command: list[str],
+    *,
+    model: str | None = None,
+    model_flag: str = "--model",
+    resume: bool = False,
+    resume_args: list[str] | None = None,
+) -> list[str]:
+    """Compose the worker argv: base command + model routing + resume flag.
+
+    Helix never wraps the worker's tools — but which *model* answers, and
+    whether the worker continues an interrupted conversation, are argv-level
+    context the worker itself exposes. Both stay worker data: the flag names
+    come from the project's ``helix.yaml`` (defaults fit Claude Code).
+    """
+    argv = list(command)
+    if model:
+        argv += [model_flag, model]
+    if resume:
+        argv += list(resume_args if resume_args is not None else ["--continue"])
+    return argv
 
 
 def _feed_stdin(stdin, prompt: str) -> None:
@@ -48,7 +85,7 @@ def invoke(
     env: dict[str, str] | None = None,
     sink: Path | None = None,
     on_line: Callable[[str], None] | None = None,
-) -> str:
+) -> InvokeResult:
     """Run the native worker once with ``prompt`` in ``cwd`` and return its output.
 
     The composed prompt is fed to the worker on **stdin**; ``command`` is the
@@ -65,9 +102,9 @@ def invoke(
       caller can render a live train-of-thought (see :mod:`helix.observe`).
 
     stderr is merged into the stream so the full trace is preserved in one place.
-    Returns the complete captured output. Raises ``FileNotFoundError`` if the
-    worker binary is not found, and ``subprocess.TimeoutExpired`` if it exceeds
-    ``timeout_s``.
+    Returns an :class:`InvokeResult` with the complete captured output and the
+    worker's exit code. Raises ``FileNotFoundError`` if the worker binary is not
+    found, and ``subprocess.TimeoutExpired`` if it exceeds ``timeout_s``.
     """
     proc = subprocess.Popen(
         command,
@@ -113,7 +150,7 @@ def invoke(
     output = "".join(captured)
     if timed_out.is_set():
         raise subprocess.TimeoutExpired(command, timeout_s, output=output)
-    return output
+    return InvokeResult(output=output, returncode=proc.returncode)
 
 
 def converse(

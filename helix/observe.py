@@ -127,6 +127,64 @@ def render_line(line: str, *, markup: bool = True) -> str | None:
     return None
 
 
+# Trace classification — mechanical, no judgment. A worker invocation either
+# completed (its process exited 0 and any final result event reports success)
+# or it was cut — by a token/usage limit, a kill, or a crash. The loop treats
+# every cut the same way: halt resumably and let `helix run -c` continue.
+OK = "ok"
+INTERRUPTED = "interrupted"
+
+
+def _final_result_event(output: str) -> dict | None:
+    """The last ``result`` event in a stream-json trace, or ``None``."""
+    result = None
+    for line in output.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("type") == "result":
+            result = event
+    return result
+
+
+def classify_trace(output: str, returncode: int) -> str:
+    """Classify one worker invocation as ``ok`` or ``interrupted``.
+
+    Mechanical on purpose: a non-zero exit code, or a final ``result`` event
+    that is an error (Claude Code reports token/context/usage failures there),
+    means the invocation did not complete — no pattern-guessing over prose, so
+    a worker merely *talking about* rate limits never trips it.
+    """
+    if returncode != 0:
+        return INTERRUPTED
+    result = _final_result_event(output)
+    if result is not None and (
+        result.get("is_error") or result.get("subtype") != "success"
+    ):
+        return INTERRUPTED
+    return OK
+
+
+def halt_reason(output: str) -> str | None:
+    """A one-line human hint for why a trace was cut, best-effort from the tail."""
+    result = _final_result_event(output)
+    if result is not None:
+        for key in ("result", "error", "subtype"):
+            value = result.get(key)
+            if isinstance(value, str) and value.strip():
+                flat = " ".join(value.split())
+                return flat if len(flat) <= 120 else flat[:117] + "…"
+    for line in reversed(output.splitlines()):
+        line = line.strip()
+        if line and not line.startswith("{"):
+            return line if len(line) <= 120 else line[:117] + "…"
+    return None
+
+
 def render_stream(lines: list[str], *, markup: bool = True) -> list[str]:
     """Render a whole captured stream, dropping skipped lines."""
     out = []
