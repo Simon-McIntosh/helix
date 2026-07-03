@@ -110,3 +110,102 @@ def test_loop_chains_sessions_through_predecessors(tmp_path):
         predecessors.append(fm.get("predecessor"))
     assert predecessors[0] is None
     assert predecessors[1:] == result.sessions[:-1]
+
+
+def test_loop_halts_interrupted_when_the_worker_is_cut(tmp_path):
+    # A worker that dies (nonzero exit) must not be judged — the loop halts
+    # resumably instead of iterating on half-done work.
+    project = _project(
+        tmp_path,
+        ["sh", "-c", "cat >/dev/null; echo 'usage limit reached'; exit 1"],
+        _DONE_GATE,
+        max_iterations=4,
+    )
+
+    result = run_loop(project)
+
+    assert result.verdict == "interrupted"
+    assert result.iterations == 1
+    assert len(result.sessions) == 1  # implement only, no judge
+    assert "usage limit" in (result.reason or "")
+
+
+def test_loop_routes_model_and_resume_flag_into_the_worker_argv(tmp_path):
+    # The stand-in worker records its argv; build_command appends model routing
+    # and (on resume) the continue flag after the base command.
+    project = _project(
+        tmp_path,
+        ["sh", "-c", 'cat >/dev/null; printf "%s " "$@" > argv.txt; : > done.txt', "w"],
+        _DONE_GATE,
+    )
+    config = yaml.safe_load((project / "helix.yaml").read_text())
+    config["worker"]["model"] = "haiku"
+    config["plan"] = "PLAN.md"
+    (project / "helix.yaml").write_text(yaml.safe_dump(config))
+    (project / "PLAN.md").write_text(
+        "## Tasks\n\n- [ ] first open task (model: sonnet)\n"
+    )
+
+    result = run_loop(project, resume=True)
+
+    assert result.verdict == "pass"
+    argv = (project / "argv.txt").read_text().split()
+    # Task annotation outranks the config default; resume flag present.
+    assert argv == ["--model", "sonnet", "--continue"]
+
+
+def test_loop_cli_model_override_outranks_the_task_annotation(tmp_path):
+    project = _project(
+        tmp_path,
+        ["sh", "-c", 'cat >/dev/null; printf "%s " "$@" > argv.txt; : > done.txt', "w"],
+        _DONE_GATE,
+    )
+    config = yaml.safe_load((project / "helix.yaml").read_text())
+    config["plan"] = "PLAN.md"
+    (project / "helix.yaml").write_text(yaml.safe_dump(config))
+    (project / "PLAN.md").write_text("## Tasks\n\n- [ ] task (model: sonnet)\n")
+
+    run_loop(project, model="opus")
+
+    assert (project / "argv.txt").read_text().split() == ["--model", "opus"]
+
+
+def test_loop_chains_a_new_run_onto_the_previous_campaign(tmp_path):
+    from helix.session import walk_chain
+
+    project = _project(
+        tmp_path, ["sh", "-c", "cat >/dev/null; : > done.txt"], _DONE_GATE
+    )
+
+    first = run_loop(project)
+    second = run_loop(project)
+
+    chain = walk_chain(project / "sessions")
+    ids = [v.id for v in chain]
+    # The chain walks from the second run's judge all the way back through the
+    # first run — one campaign thread, not two islands.
+    assert ids == list(reversed(first.sessions + second.sessions))
+
+
+def test_loop_reports_progress_snapshots(tmp_path):
+    # The worker checks its task box; the snapshot after the iteration sees it.
+    project = _project(
+        tmp_path,
+        ["sh", "-c", "cat >/dev/null; printf '## Tasks\\n\\n- [x] t\\n' > PLAN.md; : > done.txt"],
+        _DONE_GATE,
+    )
+    config = yaml.safe_load((project / "helix.yaml").read_text())
+    config["plan"] = "PLAN.md"
+    (project / "helix.yaml").write_text(yaml.safe_dump(config))
+    (project / "PLAN.md").write_text("## Tasks\n\n- [ ] t\n")
+
+    seen = []
+    result = run_loop(project, on_progress=seen.append)
+
+    assert result.verdict == "pass"
+    assert len(seen) == 1
+    snap = seen[0]
+    assert (snap.tasks_done, snap.tasks_total) == (1, 1)
+    assert snap.tasks_done_start == 0
+    assert snap.iteration == 1 and snap.cap == 5
+    assert snap.elapsed_s >= 0

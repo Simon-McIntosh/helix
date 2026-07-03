@@ -46,6 +46,13 @@ def prepare_session(
     now = now or datetime.now(UTC)
     session_id = new_session_id(slug, now=now)
     session_dir = Path(sessions_dir) / session_id
+    # Same-second collisions (fast loops, back-to-back runs) get a lexical
+    # suffix so every session stays self-contained and the sort order holds.
+    bump = 2
+    while (session_dir / SESSION_FILENAME).exists():
+        session_id = f"{new_session_id(slug, now=now)}-{bump}"
+        session_dir = Path(sessions_dir) / session_id
+        bump += 1
     (session_dir / "evidence").mkdir(parents=True, exist_ok=True)
     return session_id, session_dir
 
