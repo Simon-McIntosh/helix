@@ -49,7 +49,7 @@ uv run gen-pydantic schema/helix.yaml > helix/models.py
 Lightweight; runs fine on a login node (no SLURM needed).
 
 ```bash
-uv run --no-sync python -V     # use the existing repository-root .venv (Python >= 3.13)
+uv run python -V               # syncs + uses the repository-root .venv (Python >= 3.13)
 uv run ruff check --fix . && uv run ruff format .   # BEFORE staging
 uv run pytest                  # the surrogate oracle baseline — must stay green
 git add <specific paths>       # never -A / . / *
